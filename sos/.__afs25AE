@@ -967,3 +967,4 @@ dismissDialog("Bitstream Generation Completed"); // ah (cl)
 // TclEventType: DG_GRAPH_STALE
 // TclEventType: FILE_SET_CHANGE
 // Tcl Message: update_compile_order -fileset sources_1 
+// HMemoryUtils.trashcanNow. Engine heap size: 6,720 MB. GUI used memory: 103 MB. Current time: 11/11/19, 5:09:56 PM EST
