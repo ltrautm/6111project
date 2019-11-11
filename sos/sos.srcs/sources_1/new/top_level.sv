@@ -151,11 +151,11 @@ module top_level(
     assign pixel_addr_out = sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
     assign cam = sw[2]&&((hcount<640) &&  (vcount<480))?frame_buff_out:~sw[2]&&((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     
-    ila_0 joes_ila(.clk(clk_65mhz),    .probe0(pixel_in), 
-                                        .probe1(pclk_in), 
-                                        .probe2(vsync_in),
-                                        .probe3(href_in),
-                                        .probe4(jbclk));
+//    ila_0 joes_ila(.clk(clk_65mhz),    .probe0(pixel_in), 
+//                                        .probe1(pclk_in), 
+//                                        .probe2(vsync_in),
+//                                        .probe3(href_in),
+//                                        .probe4(jbclk));
                                         
    camera_read  my_camera(.p_clock_in(pclk_in),
                           .vsync_in(vsync_in),

@@ -74,7 +74,9 @@ set rc [catch {
   set_property parent.project_path /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.xpr [current_project]
   set_property ip_output_repo /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.cache/ip [current_project]
   set_property ip_cache_permissions {read write} [current_project]
+  set_property XPM_LIBRARIES XPM_MEMORY [current_project]
   add_files -quiet /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.runs/synth_1/top_level.dcp
+  read_ip -quiet /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_0/blk_mem_gen_0.xci
   read_xdc /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/constrs_1/imports/camera/nexys4ddr.xdc
   link_design -top top_level -part xc7a100tcsg324-1
   close_msg_db -file init_design.pb
@@ -155,6 +157,7 @@ start_step write_bitstream
 set ACTIVE_STEP write_bitstream
 set rc [catch {
   create_msg_db write_bitstream.pb
+  set_property XPM_LIBRARIES XPM_MEMORY [current_project]
   catch { write_mem_info -force top_level.mmi }
   write_bitstream -force top_level.bit 
   catch {write_debug_probes -quiet -force top_level}

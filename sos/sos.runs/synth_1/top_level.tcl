@@ -17,13 +17,16 @@ proc create_report { reportName command } {
     send_msg_id runtcl-5 warning "$msg"
   }
 }
+set_param chipscope.maxJobs 2
 create_project -in_memory -part xc7a100tcsg324-1
 
 set_param project.singleFileAddWarning.threshold 0
 set_param project.compositeFile.enableAutoGeneration 0
 set_param synth.vivado.isSynthRun true
+set_msg_config -source 4 -id {IP_Flow 19-2162} -severity warning -new_severity info
 set_property webtalk.parent_dir /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.cache/wt [current_project]
 set_property parent.project_path /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.xpr [current_project]
+set_property XPM_LIBRARIES XPM_MEMORY [current_project]
 set_property default_lib xil_defaultlib [current_project]
 set_property target_language Verilog [current_project]
 set_property board_part digilentinc.com:nexys4_ddr:part0:1.1 [current_project]
@@ -33,6 +36,10 @@ read_verilog -library xil_defaultlib -sv {
   /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/imports/camera/camera_read.sv
   /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/new/top_level.sv
 }
+read_verilog -library xil_defaultlib /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/imports/Downloads/clk_wiz_lab3.v
+read_ip -quiet /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_0/blk_mem_gen_0.xci
+set_property used_in_implementation false [get_files -all /afs/athena.mit.edu/user/t/r/trautman/6.111/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_0/blk_mem_gen_0_ooc.xdc]
+
 # Mark all dcp files as not used in implementation to prevent them from being
 # stitched into the results of this synthesis run. Any black boxes in the
 # design are intentionally left as such for best results. Dcp files will be
