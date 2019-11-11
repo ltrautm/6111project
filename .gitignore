@@ -1,0 +1,16 @@
+# Ignore project files
+*.jou
+*.log
+*.str
+
+# Ignore project directories
+sos.cache/*
+sos.hw/*
+sos.ip_user_files/*
+sos.runs/*
+
+# Ignore afs (?)
+.__afs*
+
+# Ignore ~ files
+*~
