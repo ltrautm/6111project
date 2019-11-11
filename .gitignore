@@ -4,10 +4,10 @@
 *.str
 
 # Ignore project directories
-sos.cache/*
-sos.hw/*
-sos.ip_user_files/*
-sos.runs/*
+sos/sos.cache/
+sos/sos.hw/
+sos/sos.ip_user_files/
+sos/sos.runs/
 
 # Ignore afs (?)
 .__afs*
