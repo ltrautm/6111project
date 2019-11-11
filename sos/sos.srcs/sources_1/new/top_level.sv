@@ -82,6 +82,9 @@ module top_level(
     logic valid_pixel;
     logic frame_done_out;
     
+    logic she_valid;
+    assign she_valid = valid_pixel & ~sw[7];
+    
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
     
@@ -95,10 +98,10 @@ module top_level(
 
     
     
-    blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), 
+    blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
                              .dina(processed_pixels),
-                             .wea(valid_pixel),
+                             .wea(she_valid),
                              .addrb(pixel_addr_out),
                              .clkb(clk_65mhz),
                              .doutb(frame_buff_out));
