@@ -1,5 +1,3 @@
-
-
 module rgb_over_serial(
     input clk_in,
     input rst_in, 

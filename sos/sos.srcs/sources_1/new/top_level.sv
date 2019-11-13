@@ -102,11 +102,11 @@ module top_level(
     
     logic [7:0] rgb_value;
     
-    serial_tx my_tx(.clk_in(clk_100mhz), .rst_in(reset), .trigger_in(sw[11]),
-                .val_in(rgb_value), .data_out(jc[0]));
+    serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(sw[11]),
+                .val_in(frame_buff_out), .data_out(jc[0]));
                 
-    rgb_over_serial my_rgb_serial(.clk_in(clk_100mhz), .rst_in(reset), 
-                .val_in(rgb), .val_out(rgb_value));
+//    rgb_over_serial my_rgb_serial(.clk_in(clk_65mhz), .rst_in(reset), 
+//                .val_in(rgb), .val_out(rgb_value));
     
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
