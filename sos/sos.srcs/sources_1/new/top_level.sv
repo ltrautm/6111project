@@ -43,10 +43,11 @@ module top_level(
 
     assign led = sw;                        // turn leds on
     assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
-    assign led16_r = btnl;                  // left button -> red led
+//    assign led16_r = btnl;                  // left button -> red led
     assign led16_g = btnc;                  // center button -> green led
     assign led16_b = btnr;                  // right button -> blue led
-    assign led17_r = btnl;
+//    assign led17_r = btnl;
+
     assign led17_g = btnc;
     assign led17_b = btnr;
 
@@ -62,7 +63,6 @@ module top_level(
     // btnc button is user reset
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
-   
    
     logic xclk;
     logic[1:0] xclk_count;
@@ -100,14 +100,52 @@ module top_level(
     //outputting the image data via serial
     assign jc[1] = 0;
     
-    logic [7:0] rgb_value;
+    logic send_serial;
+    logic trigger_in;
+    logic done;
     
-    serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(sw[11]),
-                .val_in(frame_buff_out), .data_out(jc[0]));
+    debounce send_debounce(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnl),.clean_out(send_serial));
+    
+    serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in),
+                .val_in(frame_buff_out), .done(done), .data_out(jc[0]));
                 
-//    rgb_over_serial my_rgb_serial(.clk_in(clk_65mhz), .rst_in(reset), 
-//                .val_in(rgb), .val_out(rgb_value));
+    // Serial FSM
+    parameter IDLE = 4'b1000;
+    parameter WAITING = 4'b0100;
+    parameter SEND_RGB = 4'b0010;
+    parameter NEXT_PIXEL = 4'b0001;
+    parameter   PIXELS = 'd76800; // 240 * 320 pixels
     
+    logic [3:0] state = IDLE;
+    
+    always_ff@(posedge clk_65mhz)begin
+        case (state) 
+            IDLE: begin
+                if(send_serial)begin
+                    trigger_in <= 1;
+                    state <= SEND_RGB;
+                end
+            end
+            
+            WAITING: begin //unused for now
+            end
+            
+            SEND_RGB: begin
+                if(pixel_addr_out == PIXELS)begin
+                    state <= IDLE;
+                end else if(done)begin
+                    pixel_addr_out <= pixel_addr_out + 1;
+                    trigger_in <= 1;
+                end else begin
+                    trigger_in <= 0;
+                end
+            end
+            
+            NEXT_PIXEL: begin // unused for now
+            end
+            
+        endcase
+    end
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
