@@ -27,7 +27,8 @@ module top_level(
    output led17_b, led17_g, led17_r,
    output[15:0] led,
    output ca, cb, cc, cd, ce, cf, cg, dp,  // segments a-g, dp
-   output[7:0] an    // Display location 0-7
+   output[7:0] an,    // Display location 0-7
+   output logic [1:0] jc //outputting the serial here
    );
     logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
@@ -96,6 +97,16 @@ module top_level(
     assign green_diff = (output_pixels[10:7]>old_output_pixels[10:7])?output_pixels[10:7]-old_output_pixels[10:7]:old_output_pixels[10:7]-output_pixels[10:7];
     assign blue_diff = (output_pixels[4:1]>old_output_pixels[4:1])?output_pixels[4:1]-old_output_pixels[4:1]:old_output_pixels[4:1]-output_pixels[4:1];
 
+    //outputting the image data via serial
+    assign jc[1] = 0;
+    
+    logic [7:0] rgb_value;
+    
+    serial_tx my_tx(.clk_in(clk_100mhz), .rst_in(reset), .trigger_in(sw[11]),
+                .val_in(rgb_value), .data_out(jc[0]));
+                
+    rgb_over_serial my_rgb_serial(.clk_in(clk_100mhz), .rst_in(reset), 
+                .val_in(rgb), .val_out(rgb_value));
     
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
