@@ -84,7 +84,7 @@ module top_level(
     logic frame_done_out;
     
     logic she_valid;
-    assign she_valid = valid_pixel & ~sw[7];
+    assign she_valid = ~sw[7];  // valid_pixel & ~sw[7];
     
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
@@ -101,51 +101,99 @@ module top_level(
     assign jc[1] = 0;
     
     logic send_serial;
-    logic trigger_in;
+    logic trigger_in = 0;
     logic done;
-    
+    logic [3:0] rgb_input;
     debounce send_debounce(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnl),.clean_out(send_serial));
     
     serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in),
-                .val_in(frame_buff_out), .done(done), .data_out(jc[0]));
+                .val_in(rgb_input), .done(done), .data_out(jc[0]));
                 
-    // Serial FSM
-    parameter IDLE = 4'b1000;
-    parameter WAITING = 4'b0100;
-    parameter SEND_RGB = 4'b0010;
-    parameter NEXT_PIXEL = 4'b0001;
-    parameter   PIXELS = 'd76800; // 240 * 320 pixels
+//    // Serial FSM
+    parameter IDLE =        8'b1000_0000;
+    parameter WAIT1 =       8'b0100_0000;
+    parameter SEND_RED =    8'b0010_0000;
+    parameter WAIT2 =       8'b0001_0000;
+    parameter SEND_GREEN =  8'b0000_1000;
+    parameter WAIT3 =       8'b0000_0100;
+    parameter SEND_BLUE =   8'b0000_0010;
+    parameter WAIT4 =       8'b0000_0001;
+    
+    parameter PIXELS =      'd76800; // 240 * 320 pixels
     
     logic [3:0] state = IDLE;
     
     always_ff@(posedge clk_65mhz)begin
-        case (state) 
-            IDLE: begin
-                if(send_serial)begin
-                    trigger_in <= 1;
-                    state <= SEND_RGB;
+        if(sw[15])begin
+            pixel_addr_out <= sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
+        end else begin
+            case (state) 
+                IDLE: begin
+                    if(send_serial)begin
+                        trigger_in <= 0;
+                        pixel_addr_out <= 0;
+                        rgb_input <= frame_buff_out[11:8];
+                        state <= WAIT1;
+                    end
                 end
-            end
-            
-            WAITING: begin //unused for now
-            end
-            
-            SEND_RGB: begin
-                if(pixel_addr_out == PIXELS)begin
-                    state <= IDLE;
-                end else if(done)begin
-                    pixel_addr_out <= pixel_addr_out + 1;
+                
+                WAIT1: begin //unused for now
                     trigger_in <= 1;
-                end else begin
+                    state <= SEND_RED;
+                end
+                
+                SEND_RED: begin // have a send R, send G, send B states
                     trigger_in <= 0;
+                    if(pixel_addr_out == PIXELS)begin
+                        state <= IDLE;
+                        pixel_addr_out <= 0;
+                    end else if(done)begin
+                        trigger_in <= 0;
+                        rgb_input <= frame_buff_out[7:4];
+                        state <= WAIT2;
+                    end
                 end
-            end
-            
-            NEXT_PIXEL: begin // unused for now
-            end
-            
-        endcase
+                
+                WAIT2: begin
+                    trigger_in <= 1;
+                    state <= SEND_GREEN;
+                end
+                
+                SEND_GREEN: begin
+                    trigger_in <= 0;
+                    if(pixel_addr_out == PIXELS)begin
+                        state <= IDLE;
+                        pixel_addr_out <= 0;
+                    end else if(done)begin
+                        state <= WAIT3;
+                        rgb_input <= frame_buff_out[3:0];
+                    end
+                end
+                
+                WAIT3: begin
+                    trigger_in <= 1;
+                    state <= SEND_BLUE;
+                end
+                
+                SEND_BLUE: begin
+                    trigger_in <= 0;
+                    if(pixel_addr_out == PIXELS)begin
+                        state <= IDLE;
+                        pixel_addr_out <= 0;
+                    end else if(done)begin
+                        pixel_addr_out <= pixel_addr_out + 1;
+                        state <= WAIT1;
+                    end
+                end
+                
+                WAIT4: begin //unused for now
+                end
+                
+            endcase
+        end
     end
+    
+    ila_0 my_ila(.clk(clk_65mhz), .probe0(state), .probe1(trigger_in), .probe2(frame_buff_out), .probe3(done), .probe4(jc[0]), .probe5(pixel_addr_out));
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
@@ -200,7 +248,7 @@ module top_level(
         end
             
     end
-    assign pixel_addr_out = sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
+//    assign pixel_addr_out = sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
     assign cam = sw[2]&&((hcount<640) &&  (vcount<480))?frame_buff_out:~sw[2]&&((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     
 //    ila_0 joes_ila(.clk(clk_65mhz),    .probe0(pixel_in), 
