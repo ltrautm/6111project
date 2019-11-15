@@ -42,13 +42,15 @@ else:
     print("No Serial Device :/ Check USB cable connections/device!")
     exit()
 
+data_received = []
 try:
     print("Reading...")
     while True:
-        data = ser.read(1) #read the buffer (99/100 timeout will hit)
+        data = ser.read(2) #read the buffer (99/100 timeout will hit)
         if data != b'':  #if not nothing there.
             print("data[0]", data[0])
-            print("data", data)
+            print("data", data.hex(), "num bits received", len(data_received))
+            data_received.append(data[0])
             # if data[0]<=127: #if going to be valid ascii...
             #     print("ASCII: {}, Value: {}".format(data.decode('ascii'),data[0]))
             # else:
