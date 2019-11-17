@@ -109,21 +109,23 @@ module top_level(
     serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in),
                 .val_in(rgb_input), .done(done), .data_out(jc[0]));
                 
-//    // Serial FSM
-    parameter IDLE =        8'b1000_0000;
-    parameter WAIT1 =       8'b0100_0000;
-    parameter SEND_RED =    8'b0010_0000;
-    parameter WAIT2 =       8'b0001_0000;
-    parameter SEND_GREEN =  8'b0000_1000;
-    parameter WAIT3 =       8'b0000_0100;
-    parameter SEND_BLUE =   8'b0000_0010;
-    parameter PASS1 =       8'b0000_0001;
-//    parameter WAIT4 =       8'b0000_0001;
-    
+//  Serial FSM
+    parameter IDLE =        10'b1000000000;
+    parameter WAIT1 =       10'b0100000000;
+    parameter SEND_RED =    10'b0010000000;
+    parameter WAIT2 =       10'b0001000000;
+    parameter SEND_GREEN =  10'b0000100000;
+    parameter WAIT3 =       10'b0000010000;
+    parameter SEND_BLUE =   10'b0000001000;
+    parameter PASS1 =       10'b0000000100;
+    parameter PASS2 =       10'b0000000010;
+    parameter PASS3 =       10'b0000000001;
+
     parameter PIXELS =      'd76800; // 240 * 320 pixels
     
-    logic [7:0] state = IDLE;
+    logic [9:0] state = IDLE;
     logic [10:0] waiting = 0;
+    
     always_ff@(posedge clk_65mhz)begin
         if(reset)begin
             state <= IDLE;
@@ -136,7 +138,7 @@ module top_level(
                         if(send_serial)begin
                             trigger_in <= 0;
                             pixel_addr_out <= 0;
-                            state <= WAIT1;
+                            state <= PASS1;
                         end
                     end
                     
@@ -158,18 +160,18 @@ module top_level(
                             state <= IDLE;
                             pixel_addr_out <= 0;
                         end else if(done & ~send_serial)begin
-                            pixel_addr_out <= pixel_addr_out + 1;
-                            state <= WAIT1;
-                            
-                            
-//                            rgb_input <= {4'b0, frame_buff_out[7:4]};
-//                            rgb_input <= {4'b0, 4'b0};
-//                            state <= WAIT2;
+                            state <= PASS2;
                         end
+                    end
+                    
+                    PASS2: begin
+                        trigger_in <= 0;
+                        state <= WAIT2;
                     end
                     
                     WAIT2: begin
                         trigger_in <= 1;
+                        rgb_input <= {4'b0, frame_buff_out[7:4]};
                         state <= SEND_GREEN;
                     end
                     
@@ -179,14 +181,18 @@ module top_level(
                             state <= IDLE;
                             pixel_addr_out <= 0;
                         end else if(done & ~send_serial)begin
-                            state <= WAIT3;
-//                            rgb_input <= {4'b0, frame_buff_out[3:0]};
-                            rgb_input <= {4'b0, 4'b0};
+                            state <= PASS3;
                         end
+                    end
+                    
+                    PASS3: begin
+                        trigger_in <= 0;
+                        state <= WAIT3;
                     end
                     
                     WAIT3: begin
                         trigger_in <= 1;
+                        rgb_input <= {4'b0, frame_buff_out[3:0]};
                         state <= SEND_BLUE;
                     end
                     
@@ -197,14 +203,13 @@ module top_level(
                             pixel_addr_out <= 0;
                         end else if(done & ~send_serial)begin
                             pixel_addr_out <= pixel_addr_out + 1;
-                            state <= WAIT1;
+                            state <= PASS1;
                         end
                     end
    
                 endcase
             end
         end
-        
     end
     
     ila_0 my_ila(.clk(clk_65mhz), .probe0(state), .probe1(trigger_in), .probe2(frame_buff_out), .probe3(done), .probe4(jc[0]), .probe5(pixel_addr_out));
