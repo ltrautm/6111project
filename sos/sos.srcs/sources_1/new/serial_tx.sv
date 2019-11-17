@@ -1,14 +1,14 @@
 module serial_tx(   input           clk_in,
                     input           rst_in,
                     input           trigger_in,
-                    input [3:0]     val_in,
+                    input [7:0]     val_in,
                     output logic    done,
                     output logic    data_out);
                     
-    parameter   DIVISOR = 1335;// to account for 65 mhz clock. 868; //treat this like a constant!!
+    parameter   DIVISOR = 564; // to account for 65 mhz clock 1/baud rate * clock rate
     
     
-    logic [9:0]         shift_buffer; //10 bits...interesting
+    logic [9:0]          shift_buffer; //10 bits...interesting
     logic [31:0]         count;
     logic [3:0]          count_bits;
     
@@ -20,12 +20,12 @@ module serial_tx(   input           clk_in,
             count_bits <= 0;
         end else begin  
             if(trigger_in)begin
-                shift_buffer <= {1'b1, 4'b0, val_in, 1'b0}; // prepend val_in with 0 and append with 1, store in shift_buffer
+                shift_buffer <= {1'b1, val_in, 1'b0}; // prepend val_in with 0 and append with 1, store in shift_buffer
                 count <= DIVISOR;
                 count_bits <= 0;
                 done <= 0;
             end else begin
-                if(count_bits == 9)begin
+                if(count_bits == 11)begin
                     count_bits <=0;
                     done <= 1;
                 end else if(count==DIVISOR)begin // if count == DIVISOR

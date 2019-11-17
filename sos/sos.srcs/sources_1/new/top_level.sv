@@ -45,11 +45,11 @@ module top_level(
     assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
 //    assign led16_r = btnl;                  // left button -> red led
     assign led16_g = btnc;                  // center button -> green led
-    assign led16_b = btnr;                  // right button -> blue led
+//    assign led16_b = btnr;                  // right button -> blue led
 //    assign led17_r = btnl;
 
     assign led17_g = btnc;
-    assign led17_b = btnr;
+//    assign led17_b = btnr;
 
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
@@ -103,7 +103,7 @@ module top_level(
     logic send_serial;
     logic trigger_in = 0;
     logic done;
-    logic [3:0] rgb_input;
+    logic [7:0] rgb_input;
     debounce send_debounce(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnl),.clean_out(send_serial));
     
     serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in),
@@ -117,80 +117,94 @@ module top_level(
     parameter SEND_GREEN =  8'b0000_1000;
     parameter WAIT3 =       8'b0000_0100;
     parameter SEND_BLUE =   8'b0000_0010;
-    parameter WAIT4 =       8'b0000_0001;
+    parameter PASS1 =       8'b0000_0001;
+//    parameter WAIT4 =       8'b0000_0001;
     
     parameter PIXELS =      'd76800; // 240 * 320 pixels
     
-    logic [3:0] state = IDLE;
-    
+    logic [7:0] state = IDLE;
+    logic [10:0] waiting = 0;
     always_ff@(posedge clk_65mhz)begin
-        if(sw[15])begin
-            pixel_addr_out <= sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
+        if(reset)begin
+            state <= IDLE;
         end else begin
-            case (state) 
-                IDLE: begin
-                    if(send_serial)begin
+            if(sw[15]) begin
+                pixel_addr_out <= sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
+            end else begin
+                case (state) 
+                    IDLE: begin
+                        if(send_serial)begin
+                            trigger_in <= 0;
+                            pixel_addr_out <= 0;
+                            state <= WAIT1;
+                        end
+                    end
+                    
+                    PASS1: begin
                         trigger_in <= 0;
-                        pixel_addr_out <= 0;
-                        rgb_input <= frame_buff_out[11:8];
                         state <= WAIT1;
                     end
-                end
-                
-                WAIT1: begin //unused for now
-                    trigger_in <= 1;
-                    state <= SEND_RED;
-                end
-                
-                SEND_RED: begin // have a send R, send G, send B states
-                    trigger_in <= 0;
-                    if(pixel_addr_out == PIXELS)begin
-                        state <= IDLE;
-                        pixel_addr_out <= 0;
-                    end else if(done)begin
+                    
+                    
+                    WAIT1: begin
+                        trigger_in <= 1;
+                        rgb_input <= {4'b0000, frame_buff_out[11:8]};
+                        state <= SEND_RED;
+                    end
+                    
+                    SEND_RED: begin
                         trigger_in <= 0;
-                        rgb_input <= frame_buff_out[7:4];
-                        state <= WAIT2;
+                        if(pixel_addr_out == PIXELS)begin
+                            state <= IDLE;
+                            pixel_addr_out <= 0;
+                        end else if(done & ~send_serial)begin
+                            pixel_addr_out <= pixel_addr_out + 1;
+                            state <= WAIT1;
+                            
+                            
+//                            rgb_input <= {4'b0, frame_buff_out[7:4]};
+//                            rgb_input <= {4'b0, 4'b0};
+//                            state <= WAIT2;
+                        end
                     end
-                end
-                
-                WAIT2: begin
-                    trigger_in <= 1;
-                    state <= SEND_GREEN;
-                end
-                
-                SEND_GREEN: begin
-                    trigger_in <= 0;
-                    if(pixel_addr_out == PIXELS)begin
-                        state <= IDLE;
-                        pixel_addr_out <= 0;
-                    end else if(done)begin
-                        state <= WAIT3;
-                        rgb_input <= frame_buff_out[3:0];
+                    
+                    WAIT2: begin
+                        trigger_in <= 1;
+                        state <= SEND_GREEN;
                     end
-                end
-                
-                WAIT3: begin
-                    trigger_in <= 1;
-                    state <= SEND_BLUE;
-                end
-                
-                SEND_BLUE: begin
-                    trigger_in <= 0;
-                    if(pixel_addr_out == PIXELS)begin
-                        state <= IDLE;
-                        pixel_addr_out <= 0;
-                    end else if(done)begin
-                        pixel_addr_out <= pixel_addr_out + 1;
-                        state <= WAIT1;
+                    
+                    SEND_GREEN: begin
+                        trigger_in <= 0;
+                        if(pixel_addr_out == PIXELS)begin
+                            state <= IDLE;
+                            pixel_addr_out <= 0;
+                        end else if(done & ~send_serial)begin
+                            state <= WAIT3;
+//                            rgb_input <= {4'b0, frame_buff_out[3:0]};
+                            rgb_input <= {4'b0, 4'b0};
+                        end
                     end
-                end
-                
-                WAIT4: begin //unused for now
-                end
-                
-            endcase
+                    
+                    WAIT3: begin
+                        trigger_in <= 1;
+                        state <= SEND_BLUE;
+                    end
+                    
+                    SEND_BLUE: begin
+                        trigger_in <= 0;
+                        if(pixel_addr_out == PIXELS)begin
+                            state <= IDLE;
+                            pixel_addr_out <= 0;
+                        end else if(done & ~send_serial)begin
+                            pixel_addr_out <= pixel_addr_out + 1;
+                            state <= WAIT1;
+                        end
+                    end
+   
+                endcase
+            end
         end
+        
     end
     
     ila_0 my_ila(.clk(clk_65mhz), .probe0(state), .probe1(trigger_in), .probe2(frame_buff_out), .probe3(done), .probe4(jc[0]), .probe5(pixel_addr_out));
@@ -244,7 +258,7 @@ module top_level(
                 processed_pixels <= 12'h000;
             end
         end else begin
-            processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
+            processed_pixels <= {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
         end
             
     end
