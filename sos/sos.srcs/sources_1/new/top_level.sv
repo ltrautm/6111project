@@ -36,9 +36,11 @@ module top_level(
     logic clk_65mhz;
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
     
+    
+    
     logic [7:0] myang = 8'd90;
     
-    servo my_servo(.angle(myang), .servo_pulse(jc[0]));    
+    servo my_servo(.clk(clk_100mhz), .angle(myang), .servo_pulse(jc[0]));    
     
 //    always_ff @(posedge clk_65mhz) begin
         
