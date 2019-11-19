@@ -2,13 +2,15 @@
 // this module is meant to wrap up all the reading in the camera
 // maybe there should be another wrapper for (vga) display stuff
 
+//TODOs: Bring back the ILAAAAAA (use IP catalog and uncomment joe's ila)
+
 module camera_wrapper(
     input clk_65mhz,
     input she_val,
     input j0,j1,j2,
     input [7:0] ju,
-    input hcount,
-    input vcount,
+    input [10:0] hcount,
+    input [9:0] vcount,
     output logic [11:0] cam,
     output logic she_valid,
     output logic [16:0] pixel_addr_in,
@@ -16,9 +18,9 @@ module camera_wrapper(
     output logic [12:0] processed_pixels,
     output logic [16:0] pixel_addr_out,
     output logic [11:0] frame_buff_out
-
-
     );
+
+
 
     logic xclk;
     logic[1:0] xclk_count;
@@ -95,7 +97,7 @@ always_ff @(posedge pclk_in)begin
 //                processed_pixels <= 12'h000;
 //            end
 //        end else begin
-            processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
+            processed_pixels <= {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
 //        end
             
     end
@@ -104,7 +106,7 @@ always_ff @(posedge pclk_in)begin
 //    assign cam = sw[2]&&((hcount<640) &&  (vcount<480))?frame_buff_out:~sw[2]&&((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     
     assign pixel_addr_out = hcount+vcount*32'd320;
-    assign cam = ((hcount<640) &&  (vcount<480))?frame_buff_out:12'h000;
+    assign cam = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     
     
        camera_read  my_camera(.p_clock_in(pclk_in),

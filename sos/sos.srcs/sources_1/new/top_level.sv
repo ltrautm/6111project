@@ -32,6 +32,8 @@ module top_level(
    output ca, cb, cc, cd, ce, cf, cg, dp,  // segments a-g, dp
    output[7:0] an    // Display location 0-7
    );
+   
+   
     logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
@@ -127,7 +129,13 @@ module top_level(
                              .doutb(frame_buff_out));
                              
      //need to declare another bram for the second camera
-     
+//     blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2),
+//                                .clka(),
+//                                .dina(),
+//                                .wea(),
+//                                .addrb(),
+//                                .clkb(clk_65mhz),
+//                                .doutb());
      
      
      
@@ -147,19 +155,19 @@ module top_level(
                         .pixel_addr_out(pixel_addr_out),
                         .frame_buff_out(frame_buff_out));
      
-     camera_wrapper cw2(.clk_65mhz(clk_65mhz), 
-                        .she_val(sw[7]), 
-                        .j0(), .j1(), .j2(),
-                        .ju(),
-                        .hcount(),
-                        .vcount(),
-                        .cam(cam2),
-                        .she_valid(she_valid2),
-                        .pixel_addr_in(pixel_addr_in2),
-                        .pclk_in(pclk_in2),
-                        .processed_pixels(processed_pixels2),
-                        .pixel_addr_out(pixel_addr_out2),
-                        .frame_buff_out(frame_buff_out2));
+//     camera_wrapper cw2(.clk_65mhz(clk_65mhz), 
+//                        .she_val(sw[7]), 
+//                        .j0(), .j1(), .j2(),
+//                        .ju(),
+//                        .hcount(),
+//                        .vcount(),
+//                        .cam(cam2),
+//                        .she_valid(she_valid2),
+//                        .pixel_addr_in(pixel_addr_in2),
+//                        .pclk_in(pclk_in2),
+//                        .processed_pixels(processed_pixels2),
+//                        .pixel_addr_out(pixel_addr_out2),
+//                        .frame_buff_out(frame_buff_out2));
      
      
     
