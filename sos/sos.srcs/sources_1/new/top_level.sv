@@ -76,7 +76,7 @@ module top_level(
    
    
     //declare camera_wrapper
-//    camera_wrapper my_wrapper(.clk_65mhz(clk_65mhz),
+//    camera_wrapper my_wrapper(.clk_65mhz(clk_65mhz),xclk
 //                              .she_val(sw[7]),
 //                              .j0(jb[0]),.j1(jb[1]),.j2(jb[2]),
 //                              .ju(ja),
@@ -99,8 +99,8 @@ module top_level(
    
    
    
-    logic xclk;
-    logic[1:0] xclk_count;
+//    logic xclk;
+//    logic[1:0] xclk_count;
     
     logic pclk_buff, pclk_in;
     logic vsync_buff, vsync_in;
@@ -124,9 +124,9 @@ module top_level(
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
     
-    assign xclk = (xclk_count >2'b01);
-    assign jbclk = xclk;
-    assign jdclk = xclk;
+//    assign xclk = (xclk_count >2'b01);
+//    assign jbclk = xclk;
+//    assign jdclk = xclk;
     
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
@@ -155,7 +155,7 @@ module top_level(
         href_in <= href_buff;
         pixel_in <= pixel_buff;
         old_output_pixels <= output_pixels;
-        xclk_count <= xclk_count + 2'b01;
+//        xclk_count <= xclk_count + 2'b01;
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
   
@@ -167,9 +167,12 @@ module top_level(
                            .vsync_in(vsync_in),
                            .href_in(href_in),
                            .pixel_in(pixel_in),
+                           .clk_65mhz(clk_65mhz),
                            .output_pixels(output_pixels),
                            .valid_pixel(valid_pixel),
-                           .frame_done_out(frame_done_out));
+                           .frame_done_out(frame_done_out),
+                           .jbclk(jbclk),
+                           .jdclk(jdclk));
                                   
                                   
    

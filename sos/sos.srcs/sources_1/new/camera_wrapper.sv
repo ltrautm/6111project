@@ -3,9 +3,12 @@ module camera_wrapper( input pclk_in,
                        input vsync_in,
                        input href_in,
                        input [7:0] pixel_in,
+                       input clk_65mhz,
                        output logic [15:0] output_pixels,
                        output logic valid_pixel,
-                       output logic frame_done_out
+                       output logic frame_done_out,
+                       output logic jbclk,
+                       output logic jdclk
         );
 
         camera_read  my_camera(.p_clock_in(pclk_in),
@@ -15,7 +18,17 @@ module camera_wrapper( input pclk_in,
                               .pixel_data_out(output_pixels),
                               .pixel_valid_out(valid_pixel),
                               .frame_done_out(frame_done_out));
-
+                              
+        logic xclk;
+        logic[1:0] xclk_count;
+        
+        assign xclk = (xclk_count >2'b01);
+        assign jbclk = xclk;
+        assign jdclk = xclk;
+        
+        always_ff @(posedge clk_65mhz) begin
+            xclk_count <= xclk_count + 2'b01;
+        end
 
 endmodule //camera_wrapper
 
