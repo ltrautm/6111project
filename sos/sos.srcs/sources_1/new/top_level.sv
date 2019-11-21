@@ -9,18 +9,15 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
-//I'm going to try and use this top_level.sv as a wrapper for each of the cameras
-
-
 module top_level(
    input clk_100mhz,
    input[15:0] sw,
    input btnc, btnu, btnl, btnr, btnd,
    input [7:0] ja,
    input [2:0] jb,
-//   output   jbclk, //only for ila?
+   output   jbclk,
    input [2:0] jd,
-//   output   jdclk, //not even used??
+   output   jdclk,
    output[3:0] vga_r,
    output[3:0] vga_b,
    output[3:0] vga_g,
@@ -32,8 +29,6 @@ module top_level(
    output ca, cb, cc, cd, ce, cf, cg, dp,  // segments a-g, dp
    output[7:0] an    // Display location 0-7
    );
-   
-   
     logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
@@ -54,8 +49,6 @@ module top_level(
     assign led17_g = btnc;
     assign led17_b = btnr;
 
-
-
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
     wire hsync, vsync, blank;
@@ -70,55 +63,71 @@ module top_level(
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
    
    
-//    logic xclk;
-//    logic[1:0] xclk_count;
+   //camera logics for camera wrapper
+//   logic [11:0] cam;
+//   logic she_valid;
+//   logic [16:0] pixel_addr_in;
+//   logic pclk_in;
+//   logic [12:0] processed_pixels;
+//   logic [16:0] pixel_addr_out;
+//   logic [11:0] frame_buff_out;
+   
+   
+   
+   
+    //declare camera_wrapper
+//    camera_wrapper my_wrapper(.clk_65mhz(clk_65mhz),
+//                              .she_val(sw[7]),
+//                              .j0(jb[0]),.j1(jb[1]),.j2(jb[2]),
+//                              .ju(ja),
+//                              .hcount(hcount),
+//                              .vcount(vcount),
+//                              .cam(cam),
+//                              .she_valid(she_valid),
+//                              .pixel_addr_in(pixel_addr_in),
+//                              .pclk_in(pclk_in),
+//                              .processed_pixels(processed_pixels),
+//                              .pixel_addr_out(pixel_addr_out),
+//                              .frame_buff_out(frame_buff_out));
+                              
+                              
+                              
+  //Things to check:
+  //is camera_read within camera_wrapper ok?
+  //are lines to get rid of camera biggness ok?
+  //are switches going away ok?
+   
+   
+   
+    logic xclk;
+    logic[1:0] xclk_count;
     
-//    logic pclk_buff, pclk_in;
-//    logic vsync_buff, vsync_in;
-//    logic href_buff, href_in;
-//    logic[7:0] pixel_buff, pixel_in;
+    logic pclk_buff, pclk_in;
+    logic vsync_buff, vsync_in;
+    logic href_buff, href_in;
+    logic[7:0] pixel_buff, pixel_in;
     
-//    logic [11:0] cam;
-//    logic [11:0] frame_buff_out;
-//    logic [15:0] output_pixels;
-//    logic [15:0] old_output_pixels;
-//    logic [12:0] processed_pixels;
-//    logic [3:0] red_diff;
-//    logic [3:0] green_diff;
-//    logic [3:0] blue_diff;
-//    logic valid_pixel;
-//    logic frame_done_out;
-    
-//    logic she_valid;
-//    assign she_valid = valid_pixel & ~sw[7];
-    
-//    logic [16:0] pixel_addr_in;
-//    logic [16:0] pixel_addr_out;
-    
-//    assign xclk = (xclk_count >2'b01);
-//    assign jbclk = xclk;
-//    assign jdclk = xclk;
-    
-//    assign red_diff = (output_pixels[15:12]>old_output_pixels[15:12])?output_pixels[15:12]-old_output_pixels[15:12]:old_output_pixels[15:12]-output_pixels[15:12];
-//    assign green_diff = (output_pixels[10:7]>old_output_pixels[10:7])?output_pixels[10:7]-old_output_pixels[10:7]:old_output_pixels[10:7]-output_pixels[10:7];
-//    assign blue_diff = (output_pixels[4:1]>old_output_pixels[4:1])?output_pixels[4:1]-old_output_pixels[4:1]:old_output_pixels[4:1]-output_pixels[4:1];
-
-    
-    //declaring logics for camera stuff
     logic [11:0] cam;
-    logic [11:0] cam2;
-    logic she_valid;
-    logic she_valid2;
-    logic [16:0] pixel_addr_in;
-    logic [16:0] pixel_addr_in2;
-    logic pclk_in;
-    logic pclk_in2;
-    logic [12:0] processed_pixels;
-    logic [12:0] processed_pixels2;
-    logic [16:0] pixel_addr_out;
-    logic [16:0] pixel_addr_out2;
     logic [11:0] frame_buff_out;
-    logic [11:0] frame_buff_out2;
+    logic [15:0] output_pixels;
+    logic [15:0] old_output_pixels;
+    logic [12:0] processed_pixels;
+    logic [3:0] red_diff;
+    logic [3:0] green_diff;
+    logic [3:0] blue_diff;
+    logic valid_pixel;
+    logic frame_done_out;
+    
+    logic she_valid;
+    assign she_valid = valid_pixel & ~sw[7];
+    
+    logic [16:0] pixel_addr_in;
+    logic [16:0] pixel_addr_out;
+    
+    assign xclk = (xclk_count >2'b01);
+    assign jbclk = xclk;
+    assign jdclk = xclk;
+    
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
@@ -127,116 +136,47 @@ module top_level(
                              .addrb(pixel_addr_out),
                              .clkb(clk_65mhz),
                              .doutb(frame_buff_out));
-                             
-     //need to declare another bram for the second camera
-//     blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2),
-//                                .clka(),
-//                                .dina(),
-//                                .wea(),
-//                                .addrb(),
-//                                .clkb(clk_65mhz),
-//                                .doutb());
-     
-     
-     
-     
-     //declaring camera_wrapper for each camera
-     camera_wrapper cw1(.clk_65mhz(clk_65mhz), 
-                        .she_val(sw[7]), 
-                        .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
-                        .ju(ja),
-                        .hcount(hcount),
-                        .vcount(vcount),
-                        .cam(cam),
-                        .she_valid(she_valid),
-                        .pixel_addr_in(pixel_addr_in),
-                        .pclk_in(pclk_in),
-                        .processed_pixels(processed_pixels),
-                        .pixel_addr_out(pixel_addr_out),
-                        .frame_buff_out(frame_buff_out));
-     
-//     camera_wrapper cw2(.clk_65mhz(clk_65mhz), 
-//                        .she_val(sw[7]), 
-//                        .j0(), .j1(), .j2(),
-//                        .ju(),
-//                        .hcount(),
-//                        .vcount(),
-//                        .cam(cam2),
-//                        .she_valid(she_valid2),
-//                        .pixel_addr_in(pixel_addr_in2),
-//                        .pclk_in(pclk_in2),
-//                        .processed_pixels(processed_pixels2),
-//                        .pixel_addr_out(pixel_addr_out2),
-//                        .frame_buff_out(frame_buff_out2));
-     
-     
     
-//    always_ff @(posedge pclk_in)begin
-//        if (frame_done_out)begin
-//            pixel_addr_in <= 17'b0;  
-//        end else if (valid_pixel)begin
-//            pixel_addr_in <= pixel_addr_in +1;  
-//        end
-//    end
+    always_ff @(posedge pclk_in)begin
+        if (frame_done_out)begin
+            pixel_addr_in <= 17'b0;  
+        end else if (valid_pixel)begin
+            pixel_addr_in <= pixel_addr_in +1;  
+        end
+    end
     
-//    always_ff @(posedge clk_65mhz) begin
-//        pclk_buff <= jb[0];//WAS JB
-//        vsync_buff <= jb[1]; //WAS JB
-//        href_buff <= jb[2]; //WAS JB
-//        pixel_buff <= ja;
-//        pclk_in <= pclk_buff;
-//        vsync_in <= vsync_buff;
-//        href_in <= href_buff;
-//        pixel_in <= pixel_buff;
-//        old_output_pixels <= output_pixels;
-//        xclk_count <= xclk_count + 2'b01;
-//        if (sw[3])begin
-//            //processed_pixels <= {red_diff<<2, green_diff<<2, blue_diff<<2};
-//            processed_pixels <= output_pixels - old_output_pixels;
-//        end else if (sw[4]) begin
-//            if ((output_pixels[15:12]>4'b1000)&&(output_pixels[10:7]<4'b1000)&&(output_pixels[4:1]<4'b1000))begin
-//                processed_pixels <= 12'hF00;
-//            end else begin
-//                processed_pixels <= 12'h000;
-//            end
-//        end else if (sw[5]) begin
-//            if ((output_pixels[15:12]<4'b1000)&&(output_pixels[10:7]>4'b1000)&&(output_pixels[4:1]<4'b1000))begin
-//                processed_pixels <= 12'h0F0;
-//            end else begin
-//                processed_pixels <= 12'h000;
-//            end
-//        end else if (sw[6]) begin
-//            if ((output_pixels[15:12]<4'b1000)&&(output_pixels[10:7]<4'b1000)&&(output_pixels[4:1]>4'b1000))begin
-//                processed_pixels <= 12'h00F;
-//            end else begin
-//                processed_pixels <= 12'h000;
-//            end
-//        end else begin
-//            processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
-//        end
-            
-//    end
-//    assign pixel_addr_out = sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
-//    assign cam = sw[2]&&((hcount<640) &&  (vcount<480))?frame_buff_out:~sw[2]&&((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
-    
-//    ila_0 joes_ila(.clk(clk_65mhz),    .probe0(pixel_in), 
-//                                        .probe1(pclk_in), 
-//                                        .probe2(vsync_in),
-//                                        .probe3(href_in),
-//                                        .probe4(jbclk));
-                                        
-//   camera_read  my_camera(.p_clock_in(pclk_in),
-//                          .vsync_in(vsync_in),
-//                          .href_in(href_in),
-//                          .p_data_in(pixel_in),
-//                          .pixel_data_out(output_pixels),
-//                          .pixel_valid_out(valid_pixel),
-//                          .frame_done_out(frame_done_out));
+    always_ff @(posedge clk_65mhz) begin
+        pclk_buff <= jb[0];//WAS JB
+        vsync_buff <= jb[1]; //WAS JB
+        href_buff <= jb[2]; //WAS JB
+        pixel_buff <= ja;
+        pclk_in <= pclk_buff;
+        vsync_in <= vsync_buff;
+        href_in <= href_buff;
+        pixel_in <= pixel_buff;
+        old_output_pixels <= output_pixels;
+        xclk_count <= xclk_count + 2'b01;
+        processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
+    end
+  
+    assign pixel_addr_out = hcount+vcount*32'd320;
+    assign cam = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
+                                  
+                                  
+    camera_wrapper my_wrap(.pclk_in(pclk_in),
+                           .vsync_in(vsync_in),
+                           .href_in(href_in),
+                           .pixel_in(pixel_in),
+                           .output_pixels(output_pixels),
+                           .valid_pixel(valid_pixel),
+                           .frame_done_out(frame_done_out));
+                                  
+                                  
    
     // UP and DOWN buttons for pong paddle
-    wire up,down;
-    debounce db2(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnu),.clean_out(up));
-    debounce db3(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnd),.clean_out(down));
+//    wire up,down;
+//    debounce db2(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnu),.clean_out(up));
+//    debounce db3(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnd),.clean_out(down));
 
     wire phsync,pvsync,pblank;
     pong_game pg(.vclock_in(clk_65mhz),.reset_in(reset),
@@ -525,4 +465,3 @@ module xvga(input vclock_in,
    end
    
 endmodule
-
