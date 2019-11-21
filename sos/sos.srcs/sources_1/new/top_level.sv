@@ -98,11 +98,8 @@ module top_level(
   //are switches going away ok?
    
    
-   
-//    logic xclk;
-//    logic[1:0] xclk_count;
     
-    logic pclk_buff, pclk_in;
+//    logic pclk_buff, pclk_in;
     logic vsync_buff, vsync_in;
     logic href_buff, href_in;
     logic[7:0] pixel_buff, pixel_in;
@@ -124,9 +121,6 @@ module top_level(
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
     
-//    assign xclk = (xclk_count >2'b01);
-//    assign jbclk = xclk;
-//    assign jdclk = xclk;
     
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
@@ -146,16 +140,15 @@ module top_level(
     end
     
     always_ff @(posedge clk_65mhz) begin
-        pclk_buff <= jb[0];//WAS JB
+//        pclk_buff <= jb[0];//WAS JB
         vsync_buff <= jb[1]; //WAS JB
         href_buff <= jb[2]; //WAS JB
         pixel_buff <= ja;
-        pclk_in <= pclk_buff;
+//        pclk_in <= pclk_buff;
         vsync_in <= vsync_buff;
         href_in <= href_buff;
         pixel_in <= pixel_buff;
         old_output_pixels <= output_pixels;
-//        xclk_count <= xclk_count + 2'b01;
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
   
@@ -163,23 +156,19 @@ module top_level(
     assign cam = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
                                   
                                   
-    camera_wrapper my_wrap(.pclk_in(pclk_in),
+    camera_wrapper my_wrap(
                            .vsync_in(vsync_in),
                            .href_in(href_in),
                            .pixel_in(pixel_in),
                            .clk_65mhz(clk_65mhz),
+                           .j0(jb[0]),
                            .output_pixels(output_pixels),
                            .valid_pixel(valid_pixel),
                            .frame_done_out(frame_done_out),
                            .jbclk(jbclk),
-                           .jdclk(jdclk));
+                           .jdclk(jdclk),
+                           .pclk_in(pclk_in));
                                   
-                                  
-   
-    // UP and DOWN buttons for pong paddle
-//    wire up,down;
-//    debounce db2(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnu),.clean_out(up));
-//    debounce db3(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnd),.clean_out(down));
 
     wire phsync,pvsync,pblank;
     pong_game pg(.vclock_in(clk_65mhz),.reset_in(reset),
