@@ -212,7 +212,7 @@ module top_level(
         end
     end
     
-    ila_0 my_ila(.clk(clk_65mhz), .probe0(state), .probe1(trigger_in), .probe2(frame_buff_out), .probe3(done), .probe4(jc[0]), .probe5(pixel_addr_out));
+//    ila_0 my_ila(.clk(clk_65mhz), .probe0(state), .probe1(trigger_in), .probe2(frame_buff_out), .probe3(done), .probe4(jc[0]), .probe5(pixel_addr_out));
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
