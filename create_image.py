@@ -42,7 +42,6 @@ else:
     print("No Serial Device :/ Check USB cable connections/device!")
     exit()
 
-data_received = np.zeros((240*320, 3))
 test_data = []
 count = 0
 temp = []
@@ -55,35 +54,28 @@ try:
             count += 1
 
             #RED
-            if count <= 320*240:
-                # print("current count", count)
-                test_data.append((data[0] << 4, 0, 0))
-            else:
-                print("uh oh" ,count)
-                break
+            # if count <= 320*240:
+            #     # print("current count", count)
+            #     test_data.append((data[0] << 4, 0, 0))
+            # else:
+            #     print("uh oh" ,count)
+            #     break
 
         
             #  Actual
-            # temp.append(data[0] << 4)
-            # if count % 3 == 0:
-            #     data_received.append(tuple(temp))
-            #     temp = []
+            temp.append(data[0] << 4)
+            if count % 3 == 0:
+                test_data.append(tuple(temp))
+                temp = []
 
             if count == 240*320*3:
                 break
     print("done!")
-    print("v1", test_data)
+    # print("v1", test_data)
     test_data2 = np.array(test_data, dtype=np.uint8).reshape(240, 320, 3)
-    print("reshaped", test_data2)
+    # print("reshaped", test_data2)
     new_image = Image.fromarray(test_data2, mode='RGB')
-    new_image.save('test_data.png')
-
-    # data_received = data_received.reshape(240, 320, 3)
-
-    # new_image = Image.fromarray(data_received, mode='RGB')
-
-    # new_image.save('cameraserial2.png')
-    # np.savetxt('test.out', data_received)
+    new_image.save('test_image.png')
 
  
 
