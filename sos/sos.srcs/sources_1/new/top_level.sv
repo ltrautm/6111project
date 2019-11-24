@@ -62,19 +62,7 @@ module top_level(
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
    
-                             
-                              
-  //Things to check:
-  //is camera_read within camera_wrapper ok?
-  //are lines to get rid of camera biggness ok?
-  //are switches going away ok?
-   
-   
-    
-//    logic pclk_buff, pclk_in;
-//    logic vsync_buff, vsync_in;
-//    logic href_buff, href_in;
-//    logic[7:0] pixel_buff, pixel_in;
+   ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
     
     logic [11:0] cam;
     logic [11:0] frame_buff_out;
@@ -112,14 +100,6 @@ module top_level(
     end
     
     always_ff @(posedge clk_65mhz) begin
-//        pclk_buff <= jb[0];//WAS JB
-//        vsync_buff <= jb[1]; //WAS JB
-//        href_buff <= jb[2]; //WAS JB
-//        pixel_buff <= ja;
-//        pclk_in <= pclk_buff;
-//        vsync_in <= vsync_buff;
-//        href_in <= href_buff;
-//        pixel_in <= pixel_buff;
         old_output_pixels <= output_pixels;
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
@@ -138,14 +118,21 @@ module top_level(
                            .jdclk(jdclk),
                            .pclk_in(pclk_in),
                            .frame_done_out(frame_done_out));
+                           
+                           
+   ////////////////////////////////////////////CAMERA_2////////////////////////////////////////////                        
+   
+   
+   
+   
+   
+   
+   /////////end CAMERA_2//////////
                                   
 
     wire phsync,pvsync,pblank;
-    pong_game pg(.vclock_in(clk_65mhz),.reset_in(reset),
-                .up_in(up),.down_in(down),.pspeed_in(sw[15:12]),
-                .hcount_in(hcount),.vcount_in(vcount),
-                .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
-                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank),.pixel_out(pixel));
+    pong_game pg(.hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
+                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
                    hcount == 512 | vcount == 384);
@@ -174,8 +161,6 @@ module top_level(
       end
     end
 
-//    assign rgb = sw[0] ? {12{border}} : pixel ; //{{4{hcount[7]}}, {4{hcount[6]}}, {4{hcount[5]}}};
-
     // the following lines are required for the Nexys4 VGA circuit - do not change
     assign vga_r = ~b ? rgb[11:8]: 0;
     assign vga_g = ~b ? rgb[7:4] : 0;
@@ -193,37 +178,20 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 
 module pong_game (
-   input vclock_in,        // 65MHz clock
-   input reset_in,         // 1 to initialize module
-   input up_in,            // 1 when paddle should move up
-   input down_in,          // 1 when paddle should move down
-   input [3:0] pspeed_in,  // puck speed in pixels/tick 
-   input [10:0] hcount_in, // horizontal index of current pixel (0..1023)
-   input [9:0]  vcount_in, // vertical index of current pixel (0..767)
    input hsync_in,         // XVGA horizontal sync signal (active low)
    input vsync_in,         // XVGA vertical sync signal (active low)
    input blank_in,         // XVGA blanking (1 means output black pixel)
         
    output phsync_out,       // pong game's horizontal sync
    output pvsync_out,       // pong game's vertical sync
-   output pblank_out,       // pong game's blanking
-   output [11:0] pixel_out  // pong game's pixel  // r=23:16, g=15:8, b=7:0 
+   output pblank_out       // pong game's blanking
    );
 
-   wire [2:0] checkerboard;
-        
-   // REPLACE ME! The code below just generates a color checkerboard
-   // using 64 pixel by 64 pixel squares.
    
    assign phsync_out = hsync_in;
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
-   assign checkerboard = hcount_in[8:6] + vcount_in[8:6];
 
-   // here we use three bits from hcount and vcount to generate the
-   // checkerboard
-
-   assign pixel_out = {{4{checkerboard[2]}}, {4{checkerboard[1]}}, {4{checkerboard[0]}}} ;
      
 endmodule
 
@@ -250,12 +218,6 @@ module debounce (input reset_in, clock_in, noisy_in,
 
    reg [19:0] count;
    reg new_input;
-
-//   always_ff @(posedge clock_in)
-//     if (reset_in) begin new <= noisy_in; clean_out <= noisy_in; count <= 0; end
-//     else if (noisy_in != new) begin new <= noisy_in; count <= 0; end
-//     else if (count == 650000) clean_out <= new;
-//     else count <= count+1;
 
    always_ff @(posedge clock_in)
      if (reset_in) begin 
