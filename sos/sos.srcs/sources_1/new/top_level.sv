@@ -62,35 +62,7 @@ module top_level(
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
    
-   
-   //camera logics for camera wrapper
-//   logic [11:0] cam;
-//   logic she_valid;
-//   logic [16:0] pixel_addr_in;
-//   logic pclk_in;
-//   logic [12:0] processed_pixels;
-//   logic [16:0] pixel_addr_out;
-//   logic [11:0] frame_buff_out;
-   
-   
-   
-   
-    //declare camera_wrapper
-//    camera_wrapper my_wrapper(.clk_65mhz(clk_65mhz),xclk
-//                              .she_val(sw[7]),
-//                              .j0(jb[0]),.j1(jb[1]),.j2(jb[2]),
-//                              .ju(ja),
-//                              .hcount(hcount),
-//                              .vcount(vcount),
-//                              .cam(cam),
-//                              .she_valid(she_valid),
-//                              .pixel_addr_in(pixel_addr_in),
-//                              .pclk_in(pclk_in),
-//                              .processed_pixels(processed_pixels),
-//                              .pixel_addr_out(pixel_addr_out),
-//                              .frame_buff_out(frame_buff_out));
-                              
-                              
+                             
                               
   //Things to check:
   //is camera_read within camera_wrapper ok?
@@ -100,9 +72,9 @@ module top_level(
    
     
 //    logic pclk_buff, pclk_in;
-    logic vsync_buff, vsync_in;
-    logic href_buff, href_in;
-    logic[7:0] pixel_buff, pixel_in;
+//    logic vsync_buff, vsync_in;
+//    logic href_buff, href_in;
+//    logic[7:0] pixel_buff, pixel_in;
     
     logic [11:0] cam;
     logic [11:0] frame_buff_out;
@@ -141,13 +113,13 @@ module top_level(
     
     always_ff @(posedge clk_65mhz) begin
 //        pclk_buff <= jb[0];//WAS JB
-        vsync_buff <= jb[1]; //WAS JB
-        href_buff <= jb[2]; //WAS JB
-        pixel_buff <= ja;
+//        vsync_buff <= jb[1]; //WAS JB
+//        href_buff <= jb[2]; //WAS JB
+//        pixel_buff <= ja;
 //        pclk_in <= pclk_buff;
-        vsync_in <= vsync_buff;
-        href_in <= href_buff;
-        pixel_in <= pixel_buff;
+//        vsync_in <= vsync_buff;
+//        href_in <= href_buff;
+//        pixel_in <= pixel_buff;
         old_output_pixels <= output_pixels;
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
@@ -157,17 +129,15 @@ module top_level(
                                   
                                   
     camera_wrapper my_wrap(
-                           .vsync_in(vsync_in),
-                           .href_in(href_in),
-                           .pixel_in(pixel_in),
                            .clk_65mhz(clk_65mhz),
-                           .j0(jb[0]),
+                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
+                           .ju(ja),
                            .output_pixels(output_pixels),
                            .valid_pixel(valid_pixel),
-                           .frame_done_out(frame_done_out),
                            .jbclk(jbclk),
                            .jdclk(jdclk),
-                           .pclk_in(pclk_in));
+                           .pclk_in(pclk_in),
+                           .frame_done_out(frame_done_out));
                                   
 
     wire phsync,pvsync,pblank;
