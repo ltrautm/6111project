@@ -15,8 +15,9 @@ module top_level(
    input btnc, btnu, btnl, btnr, btnd,
    input [7:0] ja,
    input [2:0] jb,
-   output   jbclk,
+   input [7:0] jc,
    input [2:0] jd,
+   output   jbclk,
    output   jdclk,
    output[3:0] vga_r,
    output[3:0] vga_b,
@@ -64,14 +65,11 @@ module top_level(
    
    ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
     
-    logic [11:0] cam;
+    logic [11:0] cam1;
     logic [11:0] frame_buff_out;
     logic [15:0] output_pixels;
     logic [15:0] old_output_pixels;
     logic [12:0] processed_pixels;
-    logic [3:0] red_diff;
-    logic [3:0] green_diff;
-    logic [3:0] blue_diff;
     logic valid_pixel;
     logic frame_done_out;
     
@@ -105,13 +103,14 @@ module top_level(
     end
   
     assign pixel_addr_out = hcount+vcount*32'd320;
-    assign cam = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
+//    assign cam1 = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
+    assign cam1 = frame_buff_out;
                                   
                                   
     camera_wrapper my_wrap(
                            .clk_65mhz(clk_65mhz),
-                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
-                           .ju(ja),
+                           .j0(jd[0]), .j1(jd[1]), .j2(jd[2]), //WAS JB
+                           .ju(jc),  //WAS JA
                            .output_pixels(output_pixels),
                            .valid_pixel(valid_pixel),
                            .jbclk(jbclk),
@@ -122,12 +121,68 @@ module top_level(
                            
    ////////////////////////////////////////////CAMERA_2////////////////////////////////////////////                        
    
-   
+//    logic [11:0] cam2;
+//    logic [11:0] frame_buff_out2;
+//    logic [15:0] output_pixels2;
+//    logic [15:0] old_output_pixels2;
+//    logic [12:0] processed_pixels2;
+//    logic valid_pixel2;
+//    logic frame_done_out2;
+    
+//    logic she_valid2;
+//    assign she_valid2 = valid_pixel2 & ~sw[7];
+    
+//    logic [16:0] pixel_addr_in2;
+//    logic [16:0] pixel_addr_out2;
+    
+    
+    
+//    blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2), //take a pic based on switch and  
+//                             .clka(pclk_in2),
+//                             .dina(processed_pixels2),
+//                             .wea(she_valid2),
+//                             .addrb(pixel_addr_out2),
+//                             .clkb(clk_65mhz),
+//                             .doutb(frame_buff_out2));
+    
+//    always_ff @(posedge pclk_in2)begin
+//        if (frame_done_out2)begin
+//            pixel_addr_in2 <= 17'b0;  
+//        end else if (valid_pixel2)begin
+//            pixel_addr_in2 <= pixel_addr_in2 +1;  
+//        end
+//    end
+    
+//    always_ff @(posedge clk_65mhz) begin
+//        old_output_pixels2 <= output_pixels2;
+//        processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
+//    end
+  
+//    assign pixel_addr_out2 = hcount+vcount*32'd320;
+//    assign cam2 = frame_buff_out2;
+                                  
+                                  
+//    camera_wrapper my_wrap2(
+//                           .clk_65mhz(clk_65mhz),
+//                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
+//                           .ju(ja),
+//                           .output_pixels(output_pixels2),
+//                           .valid_pixel(valid_pixel2),
+//                           .jbclk(jbclk),
+//                           .jdclk(jdclk),
+//                           .pclk_in(pclk_in2),
+//                           .frame_done_out(frame_done_out2));
    
    
    
    
    /////////end CAMERA_2//////////
+   
+   ////Camera 1 and 2 fusion on display
+   logic [11:0] cam;
+   
+//   if ((hcount<320) &&  (vcount<240)) cam <= cam1;
+//   else cam <= 12'h000;
                                   
 
     wire phsync,pvsync,pblank;
@@ -157,6 +212,9 @@ module top_level(
          vs <= pvsync;
          b <= pblank;
          //rgb <= pixel;
+         if ((hcount<320) &&  (vcount<240)) cam <= cam1;
+//         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2;
+         else cam <= 12'h000;
          rgb <= cam;
       end
     end
@@ -195,17 +253,7 @@ module pong_game (
      
 endmodule
 
-module synchronize #(parameter NSYNC = 3)  // number of sync flops.  must be >= 2
-                   (input clk,in,
-                    output reg out);
 
-  reg [NSYNC-2:0] sync;
-
-  always_ff @ (posedge clk)
-  begin
-    {out,sync} <= {sync[NSYNC-2:0],in};
-  end
-endmodule
 
 ///////////////////////////////////////////////////////////////////////////////
 //
