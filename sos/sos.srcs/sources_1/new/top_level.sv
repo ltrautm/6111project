@@ -17,6 +17,7 @@ module top_level(
    input [2:0] jb,
    input [7:0] jc,
    input [2:0] jd,
+   output logic  jdtx,
    output   jbclk,
    output   jdclk,
    output[3:0] vga_r,
@@ -24,8 +25,8 @@ module top_level(
    output[3:0] vga_g,
    output vga_hs,
    output vga_vs,
-   output led16_b, led16_g, led16_r,
-   output led17_b, led17_g, led17_r,
+//   output led16_b, led16_g, led16_r,
+//   output led17_b, led17_g, led17_r,
    output[15:0] led,
    output ca, cb, cc, cd, ce, cf, cg, dp,  // segments a-g, dp
    output[7:0] an    // Display location 0-7
@@ -43,12 +44,12 @@ module top_level(
 
     assign led = sw;                        // turn leds on
     assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
-    assign led16_r = btnl;                  // left button -> red led
-    assign led16_g = btnc;                  // center button -> green led
-    assign led16_b = btnr;                  // right button -> blue led
-    assign led17_r = btnl;
-    assign led17_g = btnc;
-    assign led17_b = btnr;
+//    assign led16_r = btnl;                  // left button -> red led
+//    assign led16_g = btnc;                  // center button -> green led
+//    assign led16_b = btnr;                  // right button -> blue led
+//    assign led17_r = btnl;
+//    assign led17_g = btnc;
+//    assign led17_b = btnr;
 
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
@@ -79,6 +80,13 @@ module top_level(
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
     
+   
+    
+    
+
+    
+
+    
     
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
@@ -87,7 +95,7 @@ module top_level(
                              .addrb(pixel_addr_out),
                              .clkb(clk_65mhz),
                              .doutb(frame_buff_out));
-    
+
     always_ff @(posedge pclk_in)begin
         if (frame_done_out)begin
             pixel_addr_in <= 17'b0;  
@@ -101,7 +109,9 @@ module top_level(
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
   
-    assign pixel_addr_out = hcount+vcount*32'd320;
+//    assign pixel_addr_out = hcount+vcount*32'd320;
+    
+    
 //    assign cam1 = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     assign cam1 = frame_buff_out;
                                   
@@ -156,7 +166,7 @@ module top_level(
         processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
     end
   
-    assign pixel_addr_out2 = hcount+vcount*32'd320;
+//    assign pixel_addr_out2 = hcount+vcount*32'd320;
     assign cam2 = frame_buff_out2;
                                   
                                   
@@ -171,7 +181,222 @@ module top_level(
                            .frame_done_out(frame_done_out2));
    
    
+
+  ///////////////////////// SERIAL SENDING ///////////////////////////////////////// 
    
+    logic send_serial;
+    logic trigger_in = 0;
+    logic done;
+    logic [7:0] rgb_input;
+    logic out1;
+    
+    debounce send_debounce(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnl),.clean_out(send_serial));
+    
+    serial_tx my_tx(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in),
+                .val_in(rgb_input), .done(done), .data_out(out1));
+    
+    logic send_serial2;
+    logic trigger_in2 = 0;
+    logic done2;
+    logic [7:0] rgb_input2;
+    logic out2;
+    
+    debounce send_debounce2(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnr),.clean_out(send_serial2));
+    
+    serial_tx my_tx2(.clk_in(clk_65mhz), .rst_in(reset), .trigger_in(trigger_in2),
+                .val_in(rgb_input2), .done(done2), .data_out(out2));
+                
+//  Serial FSM for Camera 1
+    parameter IDLE =        10'b1000000000;
+    parameter WAIT1 =       10'b0100000000;
+    parameter SEND_RED =    10'b0010000000;
+    parameter WAIT2 =       10'b0001000000;
+    parameter SEND_GREEN =  10'b0000100000;
+    parameter WAIT3 =       10'b0000010000;
+    parameter SEND_BLUE =   10'b0000001000;
+    parameter PASS1 =       10'b0000000100;
+    parameter PASS2 =       10'b0000000010;
+    parameter PASS3 =       10'b0000000001;
+    parameter LEFT =        2'b10;
+    parameter RIGHT =       2'b01;
+    
+    parameter PIXELS =      'd76800; // 240 * 320 pixels
+    
+    logic [9:0] state = IDLE;
+    logic [1:0] camera;
+    
+    always_ff@(posedge clk_65mhz)begin
+        if(reset)begin
+            state <= IDLE;
+        end else begin
+            if(camera == LEFT)begin
+                jdtx <= out1;
+            end else if(camera == RIGHT)begin
+                jdtx <= out2;
+            end
+            if(sw[15]) begin
+                pixel_addr_out <= hcount+vcount*32'd320;
+                pixel_addr_out2 <= hcount+vcount*32'd320;
+            end else begin
+                case (state) 
+                    IDLE: begin
+                        if(send_serial)begin
+                            trigger_in <= 0;
+                            pixel_addr_out <= 0;
+                            camera <= LEFT;
+                            state <= PASS1;
+                        end
+                        
+                        if(send_serial2)begin
+                            trigger_in2 <= 0;
+                            pixel_addr_out2 <= 0;
+                            camera <= RIGHT;
+                            state <= PASS1;
+                        end
+                    end
+                    
+                    PASS1: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                        end
+                        
+                        state <= WAIT1;
+                    end
+                    
+                    
+                    WAIT1: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 1;
+                            rgb_input <= {4'b0000, frame_buff_out[11:8]};
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 1;
+                            rgb_input2 <= {4'b0000, frame_buff_out2[11:8]};
+                        end
+                        state <= SEND_RED;
+                    end
+                    
+                    SEND_RED: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                            if(pixel_addr_out == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out <= 0;
+                                camera <= 0;
+                            end else if(done & ~send_serial)begin
+                                state <= PASS2;
+                            end
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                            if(pixel_addr_out2 == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out2 <= 0;
+                                camera <= 0;
+                            end else if(done2 & ~send_serial2)begin
+                                state <= PASS2;
+                            end
+                        end
+                    end
+                    
+                    PASS2: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                        end
+                        
+                        state <= WAIT2;
+                    end
+                    
+                    WAIT2: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 1;
+                            rgb_input <= {4'b0, frame_buff_out[7:4]};         
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 1;
+                            rgb_input2 <= {4'b0, frame_buff_out2[7:4]};
+                        end
+                        
+                        state <= SEND_GREEN;
+                    end
+                    
+                    SEND_GREEN: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                            if(pixel_addr_out == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out <= 0;
+                                camera <= 0;
+                            end else if(done & ~send_serial)begin
+                                state <= PASS3;
+                            end
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                            if(pixel_addr_out2 == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out2 <= 0;
+                                camera <= 0;
+                            end else if(done2 & ~send_serial2)begin
+                                state <= PASS3;
+                            end
+                        end
+                    end
+                    
+                    PASS3: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                        end
+                        
+                        state <= WAIT3;
+                    end
+                    
+                    WAIT3: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 1;
+                            rgb_input <= {4'b0, frame_buff_out[3:0]};
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 1;
+                            rgb_input2 <= {4'b0, frame_buff_out2[3:0]};
+                        end
+                        
+                        state <= SEND_BLUE;
+                    end
+                    
+                    SEND_BLUE: begin
+                        if(camera == LEFT)begin
+                            trigger_in <= 0;
+                            if(pixel_addr_out == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out <= 0;
+                                camera <= 0;
+                            end else if(done & ~send_serial)begin
+                                pixel_addr_out <= pixel_addr_out + 1;
+                                state <= PASS1;
+                            end
+                        end else if(camera == RIGHT)begin
+                            trigger_in2 <= 0;
+                            if(pixel_addr_out2 == PIXELS)begin
+                                state <= IDLE;
+                                pixel_addr_out2 <= 0;
+                                camera <= 0;
+                            end else if(done2 & ~send_serial2)begin
+                                pixel_addr_out2 <= pixel_addr_out2 + 1;
+                                state <= PASS1;
+                            end
+                        end
+                    end
+   
+                endcase
+            end
+        end
+    end
+
+
+  ///////////////////////// end SERIAL SENDING ///////////////////////////////////////// 
+
    
    /////////end CAMERA_2//////////
    
