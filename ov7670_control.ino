@@ -20,6 +20,11 @@ const byte ADDR = 0x21; //name of the camera on I2C
 
 uint8_t settings[][2] = {
   {0x12, 0x80}, //reset
+<<<<<<< HEAD
+  {0x01, 0xFF}, //blue gain (default 80)
+  {0x02, 0x40}, //reg gain (defaul 80)
+=======
+>>>>>>> 2c82e0bef1e1cfcbc4cddf5a0af0480066785833
   {0xFF, 0xF0}, //delay
   {0x12, 0x14}, // COM7,     set RGB color output (QVGA and test pattern 0x6...for RGB video 0x4)
   {0x11, 0x80}, // CLKRC     internal PLL matches input clock
@@ -45,7 +50,11 @@ uint8_t settings[][2] = {
   {0x03, 0x0A}, //VREF       vsync edge offset
   {0x0F, 0x41}, //COM6       reset timings
   {0x1E, 0x00}, //MVFP       disable mirror / flip //might have magic value of 03
+<<<<<<< HEAD
+  //{0x33, 0x0B}, //CHLF       //magic value from the internet
+=======
   {0x33, 0x0B}, //CHLF       //magic value from the internet
+>>>>>>> 2c82e0bef1e1cfcbc4cddf5a0af0480066785833
   {0x3C, 0x78}, //COM12      no HREF when VSYNC low
   {0x69, 0x00}, //GFIX       fix gain control
   {0x74, 0x00}, //REG74      Digital gain control
@@ -60,6 +69,46 @@ uint8_t settings[][2] = {
   {0x73, 0xf0},
   {0xa2, 0x02},
   //gamma curve values
+<<<<<<< HEAD
+    {0x7a, 0x20},
+    {0x7b, 0x10},
+    {0x7c, 0x1e},
+    {0x7d, 0x35},
+    {0x7e, 0x5a},
+    {0x7f, 0x69},
+    {0x80, 0x76},
+    {0x81, 0x80},
+    {0x82, 0x88},
+    {0x83, 0x8f},
+    {0x84, 0x96},
+    {0x85, 0xa3},
+    {0x86, 0xaf},
+    {0x87, 0xc4},
+    {0x88, 0xd7},
+    {0x89, 0xe8},
+  //AGC and AEC
+    {0x13, 0xe0}, //COM8, disable AGC / AEC
+    {0x00, 0x00}, //set gain reg to 0 for AGC
+    {0x10, 0x00}, //set ARCJ reg to 0
+    {0x0d, 0x40}, //magic reserved bit for COM4
+    {0x14, 0x18}, //COM9, 4x gain + magic bit
+    {0xa5, 0x05}, // BD50MAX
+    {0xab, 0x07}, //DB60MAX
+    {0x24, 0x95}, //AGC upper limit
+    {0x25, 0x33}, //AGC lower limit
+    {0x26, 0xe3}, //AGC/AEC fast mode op region
+    {0x9f, 0x78}, //HAECC1
+    {0xa0, 0x68}, //HAECC2
+    {0xa1, 0x03}, //magic
+    {0xa6, 0xd8}, //HAECC3
+    {0xa7, 0xd8}, //HAECC4
+    {0xa8, 0xf0}, //HAECC5
+    {0xa9, 0x90}, //HAECC6
+    {0xaa, 0x94}, //HAECC7
+    {0x13, 0xe7} //COM8, enable AGC //AEC (was 0xe5) (try this at 0xe7)
+
+}; 
+=======
   {0x7a, 0x20},
   {0x7b, 0x10},
   {0x7c, 0x1e},
@@ -83,6 +132,7 @@ uint8_t settings[][2] = {
   {0x6a, 0x4F}, //green gain (default not sure!)
   {0x13, 0x00}, //disable all automatic features!! (including automatic white balance)
 };
+>>>>>>> 2c82e0bef1e1cfcbc4cddf5a0af0480066785833
 uint8_t output_state;
 
 void setup()
