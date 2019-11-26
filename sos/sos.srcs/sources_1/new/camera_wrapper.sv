@@ -7,8 +7,7 @@ module camera_wrapper(
                        input [7:0] ju,
                        output logic [15:0] output_pixels,
                        output logic valid_pixel,
-                       output logic jbclk,
-                       output logic jdclk,
+                       output logic jclk,
                        output logic pclk_in,
                        output logic frame_done_out
         );
@@ -22,8 +21,7 @@ module camera_wrapper(
         logic[7:0] pixel_buff, pixel_in;
         
         assign xclk = (xclk_count >2'b01);
-        assign jbclk = xclk;
-        assign jdclk = xclk;
+        assign jclk = xclk;
         
         always_ff @(posedge clk_65mhz) begin
             xclk_count <= xclk_count + 2'b01;

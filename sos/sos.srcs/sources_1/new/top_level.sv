@@ -113,65 +113,63 @@ module top_level(
                            .ju(jc),  //WAS JA
                            .output_pixels(output_pixels),
                            .valid_pixel(valid_pixel),
-                           .jbclk(jbclk),
-                           .jdclk(jdclk),
+                           .jclk(jdclk),
                            .pclk_in(pclk_in),
                            .frame_done_out(frame_done_out));
                            
                            
    ////////////////////////////////////////////CAMERA_2////////////////////////////////////////////                        
    
-//    logic [11:0] cam2;
-//    logic [11:0] frame_buff_out2;
-//    logic [15:0] output_pixels2;
-//    logic [15:0] old_output_pixels2;
-//    logic [12:0] processed_pixels2;
-//    logic valid_pixel2;
-//    logic frame_done_out2;
+    logic [11:0] cam2;
+    logic [11:0] frame_buff_out2;
+    logic [15:0] output_pixels2;
+    logic [15:0] old_output_pixels2;
+    logic [12:0] processed_pixels2;
+    logic valid_pixel2;
+    logic frame_done_out2;
     
-//    logic she_valid2;
-//    assign she_valid2 = valid_pixel2 & ~sw[7];
+    logic she_valid2;
+    assign she_valid2 = valid_pixel2 & ~sw[7];
     
-//    logic [16:0] pixel_addr_in2;
-//    logic [16:0] pixel_addr_out2;
+    logic [16:0] pixel_addr_in2;
+    logic [16:0] pixel_addr_out2;
     
     
     
-//    blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2), //take a pic based on switch and  
-//                             .clka(pclk_in2),
-//                             .dina(processed_pixels2),
-//                             .wea(she_valid2),
-//                             .addrb(pixel_addr_out2),
-//                             .clkb(clk_65mhz),
-//                             .doutb(frame_buff_out2));
+    blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2), //take a pic based on switch and  
+                             .clka(pclk_in2),
+                             .dina(processed_pixels2),
+                             .wea(she_valid2),
+                             .addrb(pixel_addr_out2),
+                             .clkb(clk_65mhz),
+                             .doutb(frame_buff_out2));
     
-//    always_ff @(posedge pclk_in2)begin
-//        if (frame_done_out2)begin
-//            pixel_addr_in2 <= 17'b0;  
-//        end else if (valid_pixel2)begin
-//            pixel_addr_in2 <= pixel_addr_in2 +1;  
-//        end
-//    end
+    always_ff @(posedge pclk_in2)begin
+        if (frame_done_out2)begin
+            pixel_addr_in2 <= 17'b0;  
+        end else if (valid_pixel2)begin
+            pixel_addr_in2 <= pixel_addr_in2 +1;  
+        end
+    end
     
-//    always_ff @(posedge clk_65mhz) begin
-//        old_output_pixels2 <= output_pixels2;
-//        processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
-//    end
+    always_ff @(posedge clk_65mhz) begin
+        old_output_pixels2 <= output_pixels2;
+        processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
+    end
   
-//    assign pixel_addr_out2 = hcount+vcount*32'd320;
-//    assign cam2 = frame_buff_out2;
+    assign pixel_addr_out2 = hcount+vcount*32'd320;
+    assign cam2 = frame_buff_out2;
                                   
                                   
-//    camera_wrapper my_wrap2(
-//                           .clk_65mhz(clk_65mhz),
-//                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
-//                           .ju(ja),
-//                           .output_pixels(output_pixels2),
-//                           .valid_pixel(valid_pixel2),
-//                           .jbclk(jbclk),
-//                           .jdclk(jdclk),
-//                           .pclk_in(pclk_in2),
-//                           .frame_done_out(frame_done_out2));
+    camera_wrapper my_wrap2(
+                           .clk_65mhz(clk_65mhz),
+                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
+                           .ju(ja),
+                           .output_pixels(output_pixels2),
+                           .valid_pixel(valid_pixel2),
+                           .jclk(jbclk),
+                           .pclk_in(pclk_in2),
+                           .frame_done_out(frame_done_out2));
    
    
    
@@ -213,7 +211,7 @@ module top_level(
          b <= pblank;
          //rgb <= pixel;
          if ((hcount<320) &&  (vcount<240)) cam <= cam1;
-//         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2;
+         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2;
          else cam <= 12'h000;
          rgb <= cam;
       end
