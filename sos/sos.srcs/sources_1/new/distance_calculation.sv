@@ -1,6 +1,7 @@
 module distance_calculation(
     input clk_in,
     input rst_in,
+    input start,
     input [15:0] x1,
     input [15:0] y1,
     input [15:0] x2,
@@ -47,6 +48,10 @@ module distance_calculation(
         world_x2 <= P_inv11*x2 + P_inv12*y2 + P_inv13*1;
         world_y2 <= P_inv21*x2 + P_inv22*y2 + P_inv23*1;
         world_z2 <= P_inv31*x2 + P_inv32*y2 + P_inv33*1;
+        
+        world_x <= (world_x1 + world_x2) >> 2;
+        world_y <= (world_y1 + world_y2) >> 2;
+        world_z <= (world_z1 + world_z2) >> 2;
     end
     
     
