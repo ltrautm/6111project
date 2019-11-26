@@ -118,7 +118,7 @@ module labkit(
     // btnc button is user reset
 
     wire phsync,pvsync,pblank;
-    display_select ds(.vclock_in(clk_65mhz),.select(sw[15:14]),
+    display_select ds(.vclock_in(clk_65mhz),.selectors(sw[15:14]), .processing(sw[13:10]),
                 .hcount_in(hcount),.vcount_in(vcount),
                 .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
                 .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank),.pixel_out(pixel));
@@ -169,7 +169,8 @@ module display_select (
    input hsync_in,         // XVGA horizontal sync signal (active low)
    input vsync_in,         // XVGA vertical sync signal (active low)
    input blank_in,         // XVGA blanking (1 means output black pixel)
-   input [1:0] select,
+   input [1:0] selectors,  // selects between normal or processed image
+   input [3:0] processing, // selects which kind of process is being done
         
    output phsync_out,       // pong game's horizontal sync
    output pvsync_out,       // pong game's vertical sync
@@ -184,8 +185,8 @@ module display_select (
    assign pblank_out = blank_in;
    
 
-   picture_blob  gatito(.pixel_clk_in(vclock_in), .x_in(11'd200), .hcount_in(hcount_in),
-     .y_in(10'd200), .vcount_in(vcount_in), .select(select), .pixel_out(pixel_out));
+   picture_blob  dulcecito(.pixel_clk_in(vclock_in), .x_in(11'd200), .hcount_in(hcount_in),
+     .y_in(10'd200), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(pixel_out));
 
 endmodule
 
@@ -195,49 +196,51 @@ module picture_blob
    (input pixel_clk_in,
     input [10:0] x_in,hcount_in,
     input [9:0] y_in,vcount_in,
-    input [1:0] select,         // 0 means display erosion, 1 means  display dilation
+    input original, //selection of original or processed image
+    input processed,
+    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
     output logic [11:0] pixel_out);
 
    logic [15:0] image_addr;   // num of bits for 256*240 ROM
    logic [7:0] image_bits, red_mapped, green_mapped, blue_mapped;
    
-   logic [11:0] image [239:0][319:0]; //image that will be passed on to the object detection module
+
 
    // calculate rom address and read the location
    assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
-   gato_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
+   m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
 
    // use color map to create 4 bits R, 4 bits G, 4 bits B
    // since the image is greyscale, just replicate the red pixels
    // and not bother with the other two color maps.
-   gato_map map_rom(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
-   //green_coe gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
-   //blue_coe bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
+   red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
+   green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
+   blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
    // note the one clock cycle delay in pixel!
    
    logic [9:0] yy;
    logic [9:0] xx;
-   logic [9:0] rad;
-   logic [11:0] pixel_in; //pixel that goes in to be binarized
+   logic [23:0] pixel_in; //pixel that goes in to be binarized
    logic [11:0] pixxel; //output from image processing
    
-   logic clk_130mhz;
-   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_130mhz));
+   logic clk_260mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
    
-   object_detection ob_det(.clk(clk_130mhz), .select(select),
-         .pixel_in(pixel_in), .radius(rad),
+   object_detection ob_det(.clk(clk_260mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in),
          .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
-         
-     logic [1:0] NORMAL = 2'b00; 
+   
+
+
    
    always_ff @ (posedge pixel_clk_in) begin
         if ((hcount_in >= (x_in) && hcount_in < (x_in+WIDTH)) &&
            (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
-           if (select == !NORMAL) begin
-                pixel_in <= {red_mapped[7:4], red_mapped[7:4], red_mapped[7:4]};
+           if (processed) begin
+                pixel_in <= {red_mapped, green_mapped, blue_mapped};
                 pixel_out <= pixxel;
-           end else if (select == NORMAL) begin
-                pixel_out <= {red_mapped[7:4], red_mapped[7:4], red_mapped[7:4]};
+           end else if (original) begin
+                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
            end 
         end else pixel_out <= 0;
            
