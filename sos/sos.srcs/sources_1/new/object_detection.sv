@@ -24,8 +24,9 @@ module object_detection (input clk,
                          input erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
                          input [1:0] thresholds, //switch-based thresholding alternators
                          input [23:0] pixel_in, //pixel that goes in 
-                         output [9:0] centroid_x,
-                         output [9:0] centroid_y,
+                         output logic [15:0] centroid_x,
+                         output logic [15:0] centroid_y,
+                         output logic centre_pret,
                          output logic [11:0] pixel_out
                          //output done, //makes display module wait until calulation is done before displaying--for testing only
                         // output [11:0] image_out [239:0][319:0] //displays image of choice--testing purposes only
@@ -37,8 +38,6 @@ module object_detection (input clk,
     logic erosion_out; //bit leaving erosion
     logic dilation_out; //bit leaving dilation
     
-    logic [9:0] dilate_x; // intermediates
-    logic [9:0] dilate_y;
     
     logic [7:0] hue; //hsv 
     logic [7:0] sat;
@@ -47,7 +46,9 @@ module object_detection (input clk,
     rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[23:16]), .g(pixel[15:8]), .b(pixel[7:0]), .h(hue), .s(sat), .v(val));
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .thresh_bit(thresh_out));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .eroded_bit(erosion_out));
-    dilation dilating(.clk(clk), .bit_in(erosion_out), .dilated_bit(dilation_out), .xcount(dilate_x), .ycount(dilate_y));
+    dilation dilating(.clk(clk), .bit_in(erosion_out), .dilated_bit(dilation_out));
+    localizer centroid(.clk(clk), .dil_bit(dilation_out), .x_center(centroid_x),
+       .y_center(centroid_y), .center_ready(centre_pret));
     
     always_ff @(posedge clk) begin
         pixel <= pixel_in;
@@ -148,11 +149,11 @@ module erosion(input clk,
     
 module dilation(input clk,
                 input bit_in,
-                output logic dilated_bit,
-                output logic [9:0] xcount,
-                output logic [9:0] ycount
+                output logic dilated_bit
                 );
     
+    logic [9:0] xcount;
+    logic [9:0] ycount;
     logic [321:0] kernel_workspace; //workspace register
  
     logic dilation_trigger; //tells the module when to start dilating
@@ -188,16 +189,105 @@ module dilation(input clk,
     end
  endmodule
  
-// module localizer( input clk,
-//                   input [9:0] xcount,
-//                   input [9:0] ycount,
-//                   output logic [9:0] x_center,
-//                   output logic [9:0] y_center
-//                   );
+ module localizer( input clk,
+                   input dil_bit,
+                   output logic [15:0] x_center,
+                   output logic [15:0] y_center,
+                   output center_ready
+                   );
+                   
+    logic [9:0] xcounter;
+    logic [9:0] ycounter;
+    logic [15:0] x_accumulator; // accumulates all values of x
+    logic [15:0] y_accumulator; //and y
+    logic [15:0]  bit_count; // counts number of bits that enter the stream
+    logic div_start; //start division
+    logic y_rdy;
+    logic x_rdy;
+    logic [15:0] y_remainder;
+    logic [15:0] x_remainder;
+    assign center_ready = y_rdy && x_rdy;
+    
+    initial begin
+        xcounter = 10'd0;
+        ycounter = 10'd0;
+        x_accumulator = 16'd0;
+        y_accumulator = 16'd0;
+        bit_count = 16'd0;
+        div_start = 0;
+        y_rdy = 0;
+        x_rdy = 0;
+    end
 
-// logic x_acc
+    divider ydivide(.clk(clk), .start(div_start), .dividend(y_accumulator), .divider(bit_count), .remainder(y_remainder), .quotient(y_center), .ready(y_rdy));
+    divider xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), .divider(bit_count), .remainder(x_remainder), .quotient(x_center), .ready(x_rdy));
 
-
+ //****Jeana shit****    
+    parameter IMAGE_REFRESH = 4'b0001;
+    parameter X_RESET = 4'b0010;
+    parameter ACCUMULATION = 4'b0100;
+    parameter LOCATE = 4'b1000;
+    
+    logic [3:0] state = ACCUMULATION;
+    
+    always_ff @(posedge clk) begin
+        case (state)
+            ACCUMULATION: begin
+                xcounter <= xcounter + 1'd1;
+                if (xcounter == 16'd320) begin
+                    state <= X_RESET;
+                end else if (dil_bit) begin
+                    x_accumulator <= x_accumulator + xcounter + 16'd200;
+                    y_accumulator <= y_accumulator + ycounter + 16'd200;
+                    bit_count <= bit_count + 16'd1;
+                end
+              end 
+            X_RESET: begin
+                xcounter <= 16'd0;
+                ycounter <= ycounter + 16'd1;
+                if (ycounter < 16'd240) begin
+                    state <= ACCUMULATION;
+                end else begin
+                    state <= LOCATE;
+                end
+            end
+           LOCATE: begin
+                div_start <= 1;
+                state <= IMAGE_REFRESH;
+            end
+           IMAGE_REFRESH: begin
+                div_start <= 0;
+                ycounter <= 16'd0;
+                x_accumulator <= 16'd0;
+                y_accumulator <= 16'd0;
+                bit_count <= 16'd0;
+            end
+        endcase    
+        end 
+ 
+ 
+ 
+ 
+ 
+//    always_ff @(posedge clk) begin
+//        if (xcounter == 10'd319  && ycounter == 10'd239) begin
+//            x_accumulator <= 16'd0;
+//            y_accumulator <= 16'd0;
+//            xcounter <= 10'd0;
+//            ycounter <= 10'd0;
+//            bit_count <= 16'd0;
+//            div_start <= 1;
+//        end else if (xcounter == 10'd319) begin
+//            xcounter <= 10'd0;
+//            ycounter <= ycounter + 10'd1;
+//        end else if (dil_bit) begin
+//            x_accumulator <= x_accumulator + xcounter;
+//            y_accumulator <= y_accumulator + ycounter;
+//            bit_count <= bit_count + 1'd1;
+//        end
+//        xcounter <= xcounter + 10'd1;
+//    end 
+endmodule
 
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
