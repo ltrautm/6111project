@@ -54,6 +54,7 @@ module top_level(
     wire [9:0] vcount;     // line number
     wire hsync, vsync, blank;
     wire [11:0] pixel;
+    wire [11:0] pixel2;
     reg [11:0] rgb;    
     xvga xvga1(.vclock_in(clk_65mhz),.hcount_out(hcount),.vcount_out(vcount),
           .hsync_out(hsync),.vsync_out(vsync),.blank_out(blank));
@@ -202,6 +203,20 @@ module top_level(
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
                         .pixel_out(pixel));
+                        
+    display_select ds2(.vclock_in(clk_65mhz),
+//                        .selectors(sw[15:14]), 
+                        .processing(sw[13:10]),
+                        .pixel_in(cam2),
+                        .hcount_in(hcount),
+                        .vcount_in(vcount),
+                        .hsync_in(hsync),
+                        .vsync_in(vsync),
+                        .blank_in(blank),
+                        .phsync_out(phsync),
+                        .pvsync_out(pvsync),
+                        .pblank_out(pblank),
+                        .pixel_out(pixel2));
 
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
@@ -228,7 +243,7 @@ module top_level(
          b <= pblank;
          //rgb <= pixel;
          if ((hcount<320) &&  (vcount<240)) cam <= pixel; //left camera display
-//         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2; //right camera display
+         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= pixel2; //right camera display
 //         else if ((hcount<320) && (vcount>240) && (vcount<480)) cam <= pixel; //eroded left camera
          else cam <= 12'h000;
          rgb <= cam;
