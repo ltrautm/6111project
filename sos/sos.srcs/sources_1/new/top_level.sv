@@ -186,13 +186,22 @@ module top_level(
 
     wire phsync,pvsync,pblank;
     
-    display_select ds(.vclock_in(clk_65mhz), .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
-                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
+//    display_select ds(.vclock_in(clk_65mhz), .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
+//                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
                 
-//    display_select ds(.vclock_in(clk_65mhz),.selectors(sw[15:14]), .processing(sw[13:10]),
-//                .hcount_in(hcount),.vcount_in(vcount),
-//                .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
-//                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank),.pixel_out(pixel));
+    display_select ds(.vclock_in(clk_65mhz),
+//                        .selectors(sw[15:14]), 
+                        .processing(sw[13:10]),
+                        .pixel_in(cam1),
+                        .hcount_in(hcount),
+                        .vcount_in(vcount),
+                        .hsync_in(hsync),
+                        .vsync_in(vsync),
+                        .blank_in(blank),
+                        .phsync_out(phsync),
+                        .pvsync_out(pvsync),
+                        .pblank_out(pblank),
+                        .pixel_out(pixel));
 
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
@@ -218,8 +227,9 @@ module top_level(
          vs <= pvsync;
          b <= pblank;
          //rgb <= pixel;
-         if ((hcount<320) &&  (vcount<240)) cam <= cam1;
-         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2;
+         if ((hcount<320) &&  (vcount<240)) cam <= pixel; //left camera display
+//         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= cam2; //right camera display
+//         else if ((hcount<320) && (vcount>240) && (vcount<480)) cam <= pixel; //eroded left camera
          else cam <= 12'h000;
          rgb <= cam;
       end
@@ -243,18 +253,19 @@ endmodule
 
 module display_select (
    input vclock_in,        // 65MHz clock
-//   input [10:0] hcount_in, // horizontal index of current pixel (0..1023)
-//   input [9:0]  vcount_in, // vertical index of current pixel (0..767)
+   input [10:0] hcount_in, // horizontal index of current pixel (0..1023)
+   input [9:0]  vcount_in, // vertical index of current pixel (0..767)
    input hsync_in,         // XVGA horizontal sync signal (active low)
    input vsync_in,         // XVGA vertical sync signal (active low)
    input blank_in,         // XVGA blanking (1 means output black pixel)
 //   input [1:0] selectors,  // selects between normal or processed image
-//   input [3:0] processing, // selects which kind of process is being done
+   input [3:0] processing, // selects which kind of process is being done
+   input [11:0] pixel_in,
         
-   output phsync_out,       // pong game's horizontal sync
-   output pvsync_out,       // pong game's vertical sync
-   output pblank_out       // pong game's blanking
-//   output [11:0] pixel_out  // pong game's pixel  // r=11:8, g=7:4, b=3:0
+   output logic phsync_out,       // pong game's horizontal sync
+   output logic pvsync_out,       // pong game's vertical sync
+   output logic pblank_out,       // pong game's blanking
+   output logic [11:0] pixel_out  // pong game's pixel  // r=11:8, g=7:4, b=3:0
    );
 
         
@@ -264,14 +275,22 @@ module display_select (
    assign pblank_out = blank_in;
    
 
-//   picture_blob  dulcecito(.pixel_clk_in(vclock_in), .x_in(11'd200), .hcount_in(hcount_in),
-//     .y_in(10'd200), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(pixel_out));
+   picture_blob  dulcecito(.pixel_clk_in(vclock_in), 
+                            .x_in(11'd200), 
+                            .hcount_in(hcount_in),
+                            .y_in(10'd200), 
+                            .vcount_in(vcount_in), 
+                            .pixel_in(pixel_in),
+//                            .original(selectors[1]), 
+//                            .processed(selectors[0]), 
+                            .process_selects(processing), 
+                            .pixel_out(pixel_out));
 
 endmodule
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// picture_blob: displays the image manipulated 
+// picture_blob: displays the image manipu40.88lated 
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -281,8 +300,9 @@ module picture_blob
    (input pixel_clk_in,
     input [10:0] x_in,hcount_in,
     input [9:0] y_in,vcount_in,
-    input original, //selection of original or processed image
-    input processed,
+    input [11:0] pixel_in,
+//    input original, //selection of original or processed image
+//    input processed,
     input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
     output logic [11:0] pixel_out);
 
@@ -292,45 +312,50 @@ module picture_blob
 
 
    // calculate rom address and read the location
-   assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
-   m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
+//   assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
+//   m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
 
    // use color map to create 4 bits R, 4 bits G, 4 bits B
    // since the image is greyscale, just replicate the red pixels
    // and not bother with the other two color maps.
-   red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
-   green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
-   blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
+//   red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
+//   green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
+//   blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
    // note the one clock cycle delay in pixel!
    
    logic [9:0] yy;
    logic [9:0] xx;
-   logic [23:0] pixel_in; //pixel that goes in to be binarized
-   logic [11:0] pixxel; //output from image processing
+//   logic [23:0] pixel_in; //pixel that goes in to be binarized
+//   logic [11:0] pixxel; //output from image processing
    
    logic clk_260mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
    
-   object_detection ob_det(.clk(clk_260mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in),
-         .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
+   object_detection ob_det(.clk(clk_260mhz), 
+                            .dilate(process_selects[1]), 
+                            .erode(process_selects[0]), 
+                            .thresholds(process_selects[3:2]),
+                            .pixel_in(pixel_in),
+                            .centroid_x(xx), 
+                            .centroid_y(yy), 
+                            .pixel_out(pixel_out));
    
 
 
    
-   always_ff @ (posedge pixel_clk_in) begin
-        if ((hcount_in >= (x_in) && hcount_in < (x_in+WIDTH)) &&
-           (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
-           if (processed) begin
-                pixel_in <= {red_mapped, green_mapped, blue_mapped};
-                pixel_out <= pixxel;
-           end else if (original) begin
-                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
-           end 
-        end else pixel_out <= 0;
+//   always_ff @ (posedge pixel_clk_in) begin
+//        if ((hcount_in >= (x_in) && hcount_in < (x_in+WIDTH)) &&
+//           (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
+//           if (processed) begin
+//                pixel_in <= {red_mapped, green_mapped, blue_mapped};
+//                pixel_out <= pixxel;
+//           end else if (original) begin
+//                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
+//           end 
+//        end else pixel_out <= 0;
            
    
-   end
+//   end
 endmodule
 
 

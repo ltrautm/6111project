@@ -6,7 +6,7 @@ module object_detection (input clk,
                          input dilate,
                          input erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
                          input [1:0] thresholds, //switch-based thresholding alternators
-                         input [23:0] pixel_in, //pixel that goes in 
+                         input [11:0] pixel_in, //pixel that goes in 
                          output [9:0] centroid_x,
                          output [9:0] centroid_y,
                          output logic [11:0] pixel_out
@@ -14,7 +14,7 @@ module object_detection (input clk,
                         // output [11:0] image_out [239:0][319:0] //displays image of choice--testing purposes only
                          );
 
-    logic [23:0] pixel; //pixel that goes in module
+    logic [11:0] pixel; //pixel that goes in module
     
     logic thresh_out; //bit leaving hue thresholding
     logic erosion_out; //bit leaving erosion
@@ -27,7 +27,7 @@ module object_detection (input clk,
     logic [7:0] sat;
     logic [7:0] val;
     
-    rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[23:16]), .g(pixel[15:8]), .b(pixel[7:0]), .h(hue), .s(sat), .v(val));
+    rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[11:8]), .g(pixel[7:4]), .b(pixel[3:0]), .h(hue), .s(sat), .v(val));
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .thresh_bit(thresh_out));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .eroded_bit(erosion_out));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .dilated_bit(dilation_out), .xcount(dilate_x), .ycount(dilate_y));
@@ -66,7 +66,7 @@ module hue_thresholding (input clk,
      
       always_ff @(posedge clk) begin
             if (threshes == 2'b00) begin
-                if (hue_val > 8'd90 || hue_val < 8'd85) begin
+                if (hue_val > 8'd80 || hue_val < 8'd75) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
@@ -78,7 +78,13 @@ module hue_thresholding (input clk,
                     thresh_bit <= 1;
                 end
             end else if (threshes == 2'b10) begin
-                if (hue_val > 8'd87 || hue_val < 8'd82) begin
+                if (hue_val > 8'd90 || hue_val < 8'd85) begin
+                    thresh_bit <= 0;
+                end else begin
+                    thresh_bit <= 1;
+                end
+            end else if (threshes == 2'b11) begin
+                if (hue_val > 8'd95 || hue_val < 8'd90) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
@@ -205,9 +211,9 @@ module dilation(input clk,
 module rgb2hsv(clock, reset, r, g, b, h, s, v);
 		input wire clock;
 		input wire reset;
-		input wire [7:0] r;
-		input wire [7:0] g;
-		input wire [7:0] b;
+		input wire [3:0] r;
+		input wire [3:0] g;
+		input wire [3:0] b;
 		output reg [7:0] h;
 		output reg [7:0] s;
 		output reg [7:0] v;
