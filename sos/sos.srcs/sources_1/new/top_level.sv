@@ -346,11 +346,15 @@ module picture_blob
    logic clk_260mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
    
+   logic [23:0] pixxel_in;
+   
+   assign pixxel_in = {pixel_in[11:8], 4'b0, pixel_in[7:4], 4'b0, pixel_in[3:0], 4'b0};
+   
    object_detection ob_det(.clk(clk_260mhz), 
                             .dilate(process_selects[1]), 
                             .erode(process_selects[0]), 
                             .thresholds(process_selects[3:2]),
-                            .pixel_in(pixel_in),
+                            .pixel_in(pixxel_in),
                             .centroid_x(xx), 
                             .centroid_y(yy), 
                             .pixel_out(pixel_out));
