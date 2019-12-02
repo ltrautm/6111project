@@ -273,7 +273,7 @@ module display_select (
    input hsync_in,         // XVGA horizontal sync signal (active low)
    input vsync_in,         // XVGA vertical sync signal (active low)
    input blank_in,         // XVGA blanking (1 means output black pixel)
-//   input [1:0] selectors,  // selects between normal or processed image
+   input [1:0] selectors,  // selects between normal or processed image
    input [3:0] processing, // selects which kind of process is being done
    input [11:0] pixel_in,
         
@@ -283,7 +283,9 @@ module display_select (
    output logic [11:0] pixel_out  // pong game's pixel  // r=11:8, g=7:4, b=3:0
    );
 
-        
+   logic [11:0] centroid;
+   logic [11:0] mandm;
+   assign pixel_out = centroid + mandm;        
 
    assign phsync_out = hsync_in;
    assign pvsync_out = vsync_in;
@@ -301,6 +303,67 @@ module display_select (
                             .process_selects(processing), 
                             .pixel_out(pixel_out));
 
+   blob #(.WIDTH(16),.HEIGHT(16),.COLOR(12'hFF0))   // yellow square, currently the centroid is the top left of the square.
+     the_centroid(.pixel_clk_in(vclock_in),.hcount_in(hcount_in),.vcount_in(vcount_in), 
+     .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(centroid)); 
+     
+endmodule
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// blob: generate rectangle on screen
+//
+//////////////////////////////////////////////////////////////////////
+module blob
+    #(parameter WIDTH = 64,            // default width: 64 pixels
+                HEIGHT = 64,           // default height: 64 pixels
+                COLOR = 12'hFFF)       // default color: white
+    (input pixel_clk_in,
+    input [10:0] hcount_in,
+    input [9:0] vcount_in,
+    input original, //selection of original or processed image
+    input processed,
+    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [11:0] pixel_out);
+    
+    parameter IDLE = 2'b01;
+    parameter RENDER = 2'b10;
+    logic [1:0] state = IDLE;
+    
+    
+    logic clk_200mhz;
+    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
+    
+    logic [15:0] yy;//y-coordinate of center
+    logic [15:0] xx;//x-coordinate of the center
+    logic [23:0] pixel_in; //pixel that goes in to be binarized
+    logic [11:0] pixxel; //output from image processing
+    
+    
+    logic centro_listo; // the center is ready to be displayed
+    object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo), .hcount_in(hcount_in), .vcount_in(vcount_in));
+         
+    logic centroid_trigger = 0;         
+    
+    always_ff @(posedge pixel_clk_in) begin
+        case (state)
+            IDLE: begin
+                if(centro_listo)begin
+                    state <= RENDER;
+                end
+            end
+            RENDER: begin
+                if ((hcount_in >= xx && hcount_in < (xx + WIDTH)) && (vcount_in >= yy && vcount_in < (yy + HEIGHT))) begin
+                    pixel_out <= COLOR;
+                end else begin
+                    pixel_out <= 0;
+                end
+            end
+        endcase
+        
+    end
 endmodule
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -343,10 +406,10 @@ module picture_blob
 //   logic [23:0] pixel_in; //pixel that goes in to be binarized
 //   logic [11:0] pixxel; //output from image processing
    
-   logic clk_260mhz;
-   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
+   logic clk_200mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz), .reset(reset));
    
-   object_detection ob_det(.clk(clk_260mhz), 
+   object_detection ob_det(.clk(clk_200mhz), 
                             .dilate(process_selects[1]), 
                             .erode(process_selects[0]), 
                             .thresholds(process_selects[3:2]),

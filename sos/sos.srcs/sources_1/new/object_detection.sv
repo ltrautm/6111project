@@ -2,13 +2,16 @@
 
 `timescale 1ns / 1ps
 
-module object_detection (input clk,
-                         input dilate,
-                         input erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
-                         input [1:0] thresholds, //switch-based thresholding alternators
-                         input [11:0] pixel_in, //pixel that goes in 
-                         output [9:0] centroid_x,
-                         output [9:0] centroid_y,
+module object_detection (input               clk,
+                         input               dilate,
+                         input               erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
+                         input [1:0]         thresholds, //switch-based thresholding alternators
+                         input [11:0]        pixel_in, //pixel that goes in
+                         input [10:0]        hcount_in,
+                         input [9:0]         vcount_in,
+                         output logic [9:0]  centroid_x,
+                         output logic [9:0]  centroid_y,
+                         output logic        centre_pret,
                          output logic [11:0] pixel_out
                          //output done, //makes display module wait until calulation is done before displaying--for testing only
                         // output [11:0] image_out [239:0][319:0] //displays image of choice--testing purposes only
@@ -31,6 +34,14 @@ module object_detection (input clk,
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .thresh_bit(thresh_out));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .eroded_bit(erosion_out));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .dilated_bit(dilation_out), .xcount(dilate_x), .ycount(dilate_y));
+    localizer centroid(.clk(clk), 
+                       .dil_bit(dilation_out), 
+                       .x_center(centroid_x), 
+                       .y_center(centroid_y), 
+                       .center_ready(centre_pret),
+                       .hcount_in(hcount_in),
+                       .vcount_in(vcount_in));
+    
     
     always_ff @(posedge clk) begin
         pixel <= pixel_in;
@@ -177,14 +188,108 @@ module dilation(input clk,
     end
  endmodule
  
-// module localizer( input clk,
-//                   input [9:0] xcount,
-//                   input [9:0] ycount,
-//                   output logic [9:0] x_center,
-//                   output logic [9:0] y_center
-//                   );
+ 
+ module localizer #(parameter WIDTH = 320,
+                              HEIGHT = 240)
+                   ( input clk,
+                   input dil_bit,
+                   input [10:0] hcount_in,
+                   input [9:0] vcount_in,
+                   output logic [15:0] x_center,
+                   output logic [15:0] y_center,
+                   output center_ready
+                   );
+                   
+    logic [9:0] xcounter;
+    logic [9:0] ycounter;
+    logic [15:0] x_accumulator; // accumulates all values of x
+    logic [15:0] y_accumulator; //and y
+    logic [15:0]  bit_count; // counts number of bits that enter the stream
+    logic div_start; //start division
+    logic y_rdy;
+    logic x_rdy;
+    logic [15:0] y_remainder;
+    logic [15:0] x_remainder;
+    assign center_ready = y_rdy && x_rdy;
+    
+    initial begin
+        xcounter = 10'd0;
+        ycounter = 10'd0;
+        x_accumulator = 16'd0;
+        y_accumulator = 16'd0;
+        bit_count = 16'd0;
+        div_start = 0;
+        y_rdy = 0;
+        x_rdy = 0;
+    end
 
-// logic x_acc
+    divider #(.WIDTH(16))
+        ydivide (.clk(clk), .start(div_start), .dividend(y_accumulator), .divider(bit_count), .remainder(y_remainder), .quotient(y_center), .ready(y_rdy));
+    divider #(.WIDTH(16))
+        xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), .divider(bit_count), .remainder(x_remainder), .quotient(x_center), .ready(x_rdy));
+
+ //****Jeana shit****    
+    parameter IMAGE_REFRESH = 5'b00001;
+    parameter X_RESET = 5'b00010;
+    parameter ACCUMULATION = 5'b00100;
+    parameter LOCATE = 5'b01000;
+    parameter IDLE = 5'b10000;
+    
+    logic [4:0] state = IDLE;
+    
+    always_ff @(posedge clk) begin
+        case (state)
+            IDLE: begin
+                if(hcount_in == WIDTH - 1 && vcount_in == HEIGHT - 1)begin
+                    state <= ACCUMULATION;
+                end
+            end
+            
+            ACCUMULATION: begin
+                xcounter <= xcounter + 1'd1;
+                if (xcounter == WIDTH - 1) begin
+                    state <= X_RESET;
+                end else if (dil_bit) begin
+                    x_accumulator <= x_accumulator + xcounter;
+                    y_accumulator <= y_accumulator + ycounter;
+                    bit_count <= bit_count + 16'd1;
+                end
+              end 
+              
+            X_RESET: begin
+                xcounter <= 16'd0;
+                ycounter <= ycounter + 16'd1;
+                
+                if(dil_bit)begin // MAYBE we can remove this
+                    x_accumulator <= x_accumulator + xcounter;
+                    y_accumulator <= y_accumulator + ycounter;
+                    bit_count <= bit_count + 16'd1;
+                end
+                
+                if (ycounter < HEIGHT) begin
+                    state <= ACCUMULATION;
+                end else begin
+                    state <= LOCATE;
+                end
+            end
+            
+           LOCATE: begin
+                div_start <= 1;
+                state <= IMAGE_REFRESH;
+            end
+            
+           IMAGE_REFRESH: begin
+                div_start <= 0;
+                ycounter <= 16'd0;
+                x_accumulator <= 16'd0;
+                y_accumulator <= 16'd0;
+                bit_count <= 16'd0;
+                state <= IDLE;
+            end
+        endcase    
+    end 
+ 
+endmodule
 
 
 
@@ -258,7 +363,7 @@ module rgb2hsv(clock, reset, r, g, b, h, s, v);
 		.remainder(h_remainder),
 		.ready(h_rfd)
 		);
-		always @ (posedge clock) begin
+		always_ff @ (posedge clock) begin
 		
 			// Clock 1: latch the inputs (always positive)
 			{my_r, my_g, my_b} <= {r, g, b};
