@@ -188,8 +188,8 @@ module display_select (
    logic [11:0] mandm;
    assign pixel_out = centroid + mandm;
 
-   picture_blob  dulcecito(.pixel_clk_in(vclock_in), .x_in(11'd200), .hcount_in(hcount_in),
-     .y_in(10'd200), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(mandm));
+   picture_blob  dulcecito(.pixel_clk_in(vclock_in), .x_in(11'd0), .hcount_in(hcount_in),
+     .y_in(10'd0), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(mandm));
    
    //centroid details
   // wire [11:0] centre_pixel; //show centroid
@@ -237,12 +237,12 @@ module picture_blob
    
 
    
-   logic clk_260mhz;
-   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
+   logic clk_200mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
    
    logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(clk_260mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
   
 
    logic centroid_trigger = 0;
@@ -258,13 +258,9 @@ module picture_blob
            end else if (original) begin
                 pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
            end
-        end else pixel_out <= 0;
-           
-           
-// greyscale
-        //pixel_out <= {red_mapped[7:4], 8h'0}; // only red hues
-           
-   
+        end else begin
+            pixel_out <= 0;
+        end
    end
 endmodule
 
@@ -286,27 +282,62 @@ module blob
     input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
     output logic [11:0] pixel_out);
    
-   logic clk_260mhz;
-   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
+   logic clk_200mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
    
-   logic [15:0] yy;//y-coordinate of center
-   logic [15:0] xx;//x-coordinate of the center
+   logic [24:0] yy;//y-coordinate of center
+   logic [24:0] xx;//x-coordinate of the center
    logic [23:0] pixel_in; //pixel that goes in to be binarized
    logic [11:0] pixxel; //output from image processing
    
     
    logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(clk_260mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
-         
-   logic centroid_trigger;         
+   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+  
+  
+   // Jeana Code
+   
+//    parameter IDLE = 2'b01;
+//    parameter RENDER = 2'b10;
+//    logic [1:0] state = IDLE; 
+    
+//    always_ff @(posedge pixel_clk_in) begin
+//        case (state)
+//            IDLE: begin
+//                if(centro_listo)begin
+//                    state <= RENDER;
+//                end
+//            end
+//            RENDER: begin
+//                if ((hcount_in >= xx && hcount_in < (xx + WIDTH)) && 
+//                    (vcount_in >= yy && vcount_in < (yy + HEIGHT))) begin
+//                    pixel_out <= COLOR;
+//                end else begin
+//                    pixel_out <= 0;
+//                end
+//                state <= IDLE;
+//            end
+//        endcase      
+//    end   
+    
+   // Ryan Code      
+//   logic centroid_trigger = 0;
+   //logic [12:0] centroid_counter = 0;            
 
    always_ff @(posedge pixel_clk_in) begin
-      if (centro_listo) begin
-            centroid_trigger <= 1;
-      end else if ((hcount_in >= xx+16'd200 && hcount_in < (xx+10'd200+WIDTH)) &&
-	 (vcount_in >= yy+16'd200 && vcount_in < (yy+16'd200+HEIGHT)) && centroid_trigger)
-	   pixel_out <= COLOR;
-      else pixel_out <= 0;
+//      if (centroid_counter == 13'd5120) begin
+//            centroid_counter <= 10'd0;
+//            centroid_trigger <= 0;
+//       if (centro_listo) begin
+//            centroid_trigger <= 1;
+      if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
+	 (vcount_in >= yy && vcount_in < (yy+HEIGHT))) begin
+	    pixel_out <= COLOR;
+      end else begin
+        pixel_out <= 0;
+      end
    end
+
+
 endmodule
