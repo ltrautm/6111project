@@ -14,14 +14,35 @@ module top_level(
    output logic [1:0] jc //outputting the serial here
    );
    
-    logic clk_65mhz;
+//    logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
-    clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
+//    clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
     
     
-    logic [7:0] myang = 8'd90;
+    logic [7:0] myang = 8'd270;
     
-    servo my_servo(.clk(clk_100mhz), .angle(myang), .servo_pulse(jc[0]));    
+    logic clk_50mhz = 1'b0;
+    
+    logic county = 1'b0;
+    always_ff @(posedge clk_100mhz) begin
+        if (county == 1'b1) begin
+            county <= 1'b0;
+            clk_50mhz <= 1'b0;
+        end else begin
+            county <= 1'b1;
+            clk_50mhz <= 1'b1; 
+        end
+    
+    end
+        
+//    clk_wiz_0 clkmulti(.clk_in1(clk_100mhz), .clk_out1(clk_50mhz));
+
+    servo_controller mysc(.clk(clk_50mhz),
+                            .rst(1'b0),
+                            .position(myang),
+                            .servo(jc[0]));
+    
+//    servo my_servo(.clk(clk_100mhz), .angle(myang), .servo_pulse(jc[0]));    
     
 //    always_ff @(posedge clk_65mhz) begin
         
