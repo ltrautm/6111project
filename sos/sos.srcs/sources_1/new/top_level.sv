@@ -19,6 +19,7 @@ module top_level(
    input [2:0] jd,
    output   jbclk,
    output   jdclk,
+   output   jd4,
    output[3:0] vga_r,
    output[3:0] vga_b,
    output[3:0] vga_g,
@@ -33,6 +34,9 @@ module top_level(
     logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
+    
+//    logic clk_50mhz;
+//    clk_wiz_1 clk50(.clk_in1(clk_100mhz), .clk_out1(clk_50mhz));
 
     wire [31:0] data;      //  instantiate 7-segment display; display (8) 4-bit hex
     wire [6:0] segments;
@@ -49,6 +53,33 @@ module top_level(
     assign led17_r = btnl;
     assign led17_g = btnc;
     assign led17_b = btnr;
+    
+    
+    ////Servo Controller//////
+//    logic clkk_100mhz;
+//    assign clkk_100mhz = clk_100mhz;
+
+    //make a 50mhz clock
+//    logic clk_50mhz = 1'b0;
+    
+//    logic county = 1'b0;
+//    always_ff @(posedge clk_100mhz) begin
+//        if (county == 1'b1) begin
+//            county <= 1'b0;
+//            clk_50mhz <= 1'b0;
+//        end else begin
+//            county <= 1'b1;
+//            clk_50mhz <= 1'b1; 
+//        end
+    
+//    end
+
+    //try to use the 65 or 200 mhz clocks to generate a 50mhz clock
+    servo_wrapper myservo(.clk(clk_260mhz), .js(jd4));
+    
+    
+    
+    /////Display Initialization//////
 
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
