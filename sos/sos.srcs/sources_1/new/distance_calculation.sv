@@ -8,9 +8,9 @@ module distance_calculation(
     input [15:0] y2,
     input [9:0] servo_angle,
     output logic [15:0] distance,
-    output logic [15:0] world_x,
-    output logic [15:0] world_y,
-    output logic [15:0] world_z
+    output logic signed [16:0] world_x,
+    output logic signed [16:0] world_y,
+    output logic signed [16:0] world_z
     );
     
     // 16 bits to decimal: 2^16 = 65536
@@ -18,63 +18,63 @@ module distance_calculation(
     /* LEFT CAMERA */
     
     //inverted camera 1 matrix
-    parameter P1_inv11 = 16'd1;
-    parameter P1_inv12 = 16'd0;
-    parameter P1_inv13 = 16'd0;
-    parameter P1_inv21 = 16'd0;
-    parameter P1_inv22 = 16'd1;
-    parameter P1_inv23 = 16'd0;
-    parameter P1_inv31 = 16'd0;
-    parameter P1_inv32 = 16'd0;
-    parameter P1_inv33 = 16'd1;
+    parameter signed P1_inv11 = -'d1;
+    parameter signed P1_inv12 = 17'd0;
+    parameter signed P1_inv13 = 17'd0;
+    parameter signed P1_inv21 = 17'd0;
+    parameter signed P1_inv22 = 17'd1;
+    parameter signed P1_inv23 = 17'd0;
+    parameter signed P1_inv31 = 17'd0;
+    parameter signed P1_inv32 = 17'd0;
+    parameter signed P1_inv33 = 17'd1;
     
     //real world coords of camera 1
-    parameter C1_1 = 16'd1;
-    parameter C1_2 = 16'd1;
-    parameter C1_3 = 16'd1;
+    parameter signed C1_1 = 17'd1;
+    parameter signed C1_2 = 17'd1;
+    parameter signed C1_3 = 17'd1;
     
     
     /* RIGHT CAMERA */
     
     //inverted camera 2 matrix
-    parameter P2_inv11 = 16'd1;
-    parameter P2_inv12 = 16'd0;
-    parameter P2_inv13 = 16'd0;
-    parameter P2_inv21 = 16'd1;
-    parameter P2_inv22 = 16'd0;
-    parameter P2_inv23 = 16'd0;
-    parameter P2_inv31 = 16'd1;
-    parameter P2_inv32 = 16'd0;
-    parameter P2_inv33 = 16'd0;
+    parameter signed P2_inv11 = 17'd1;
+    parameter signed P2_inv12 = 17'd0;
+    parameter signed P2_inv13 = 17'd0;
+    parameter signed P2_inv21 = 17'd1;
+    parameter signed P2_inv22 = 17'd0;
+    parameter signed P2_inv23 = 17'd0;
+    parameter signed P2_inv31 = 17'd1;
+    parameter signed P2_inv32 = 17'd0;
+    parameter signed P2_inv33 = 17'd0;
 
     //real world coords for camera 2
-    parameter C2_1 = 16'd2;
-    parameter C2_2 = 16'd2;
-    parameter C2_3 = 16'd2;
+    parameter signed C2_1 = 17'd2;
+    parameter signed C2_2 = 17'd2;
+    parameter signed C2_3 = 17'd2;
     
     // Camera 1 world vector
-    logic [15:0] world1_x;
-    logic [15:0] world1_y;
-    logic [15:0] scaling1;
+    logic signed [16:0] world1_x;
+    logic signed [16:0] world1_y;
+    logic signed [16:0] scaling1;
     
     //Camera 2 world vector
-    logic [15:0] world2_x;
-    logic [15:0] world2_y;
-    logic [15:0] scaling2;
+    logic signed [16:0] world2_x;
+    logic signed [16:0] world2_y;
+    logic signed [16:0] scaling2;
 
     // Midpoint Calculation Variables
     //Camera 1 unit vector
-    logic [15:0] u1;
-    logic [15:0] u2;
-    logic [15:0] u3;
+    logic signed [16:0] u1;
+    logic signed [16:0] u2;
+    logic signed [16:0] u3;
     
     // Camera 2 unit vector
-    logic [15:0] v1;
-    logic [15:0] v2;
-    logic [15:0] v3;
+    logic signed [16:0] v1;
+    logic signed [16:0] v2;
+    logic signed [16:0] v3;
     
     // scaling factor of where the two lines come closest
-    logic [15:0] t_cpa;
+    logic signed [16:0] t_cpa;
     
     always_ff @(posedge clk_in)begin    
         world1_x <= x1*P1_inv11 + y1*P1_inv21 + 1*P1_inv31;
