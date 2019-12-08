@@ -294,7 +294,26 @@ module top_level(
     assign vga_hs = ~hs;
     assign vga_vs = ~vs;
 
-    servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
+
+    //servo logics
+    logic sdir;
+    logic sstop;
+    
+    // instantiating servo wrapper for control of servo
+    servo_wrapper myservo(.clk(clk_200mhz),
+                            .dir(sdir),
+                            .stop(sstop),
+                            .js(jdfour));
+    
+    
+    // instantiating state machine
+    fsm myfsm(.clk(clk_65mhz),
+              .rst(btnu),
+              .btnleft(btnl),
+              .btnright(btnr),
+              .btncalc(btnd),
+              .servo_dir(sdir),
+              .servo_stop(sstop));
 
 endmodule
 
