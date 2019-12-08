@@ -1,35 +1,13 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 11/06/2019 02:36:44 PM
-// Design Name: 
-// Module Name: object_detection
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 module object_detection (input clk,
                          input dilate,
                          input erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
                          input [1:0] thresholds, //switch-based thresholding alternators
                          input [23:0] pixel_in, //pixel that goes in 
-//                         input [10:0] hcount,
-//                         input [9:0] vcount,
+                         input [10:0] hcount,
+                         input [9:0] vcount,
                          output logic [15:0] centroid_x,
                          output logic [15:0] centroid_y,
-                         output logic [11:0] pixel_out,
-                         output logic centre_pret
+                         output logic [11:0] pixel_out
                          );
 
     logic [23:0] pixel; //pixel that goes in module
@@ -48,15 +26,20 @@ module object_detection (input clk,
     logic [7:0] val;
     logic hugh_valid;
     
+    //for localizer
+    logic frame_over;
+    
     rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[23:16]), .g(pixel[15:8]), .b(pixel[7:0]), .h(hue), .s(sat), .v(val), .hue_valid(hugh_valid));
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .isValid(hugh_valid), .thresh_bit(thresh_out), .valid(thresh_valid));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .isValid(thresh_valid), .eroded_bit(erosion_out), .valid(erode_valid));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .isValid(erode_valid), .dilated_bit(dilation_out), .valid(dilate_valid));
-    localizer centroid(.clk(clk), .dil_bit(dilation_out), .isValid(dilate_valid), .x_center(centroid_x),
-       .y_center(centroid_y), .center_ready(centre_pret));
+    localizer centroid(.clk(clk), .erode_bit(erosion_out), .isValid(erode_valid), .hcount(hcount), .vcount(vcount), .x_center(centroid_x),
+       .y_center(centroid_y), .frame_blink(frame_over));
     
     always_ff @(posedge clk) begin
         pixel <= pixel_in;
+        if (hcount == 11'd319 &&  vcount == 10'd239) frame_over <= 1;
+        else frame_over <= 0;
         if (dilate) begin
             if (dilation_out == 1'b1) begin
                 pixel_out <= 12'b1111_1111_1111;
@@ -218,336 +201,60 @@ module dilation(input clk,
  endmodule
  
  module localizer( input clk,
-                   input dil_bit,
+                   input erode_bit,
                    input isValid,
-//                   input [10:0] hcount,
-//                   input  [9:0] vcount,
+                   input frame_blink,
+                   input [10:0] hcount,
+                   input [9:0] vcount,
                    output logic [15:0] x_center,
-                   output logic [15:0] y_center,
-                   output logic center_ready
+                   output logic [15:0] y_center
                    );
-                   
-      logic [9:0] xcounter;
-      logic [9:0] ycounter; 
-      logic [9:0] xscan; //scans number of one bits in a row
-      logic [9:0] record_holder; ///yvalue 
-      logic [9:0] y_record;
-      
-      initial begin 
-        xcounter = 10'd0;
-        ycounter = 10'd0;
-        xscan = 10'd0;
-        record_holder = 10'd0;
-        y_record = 10'd0;
-        center_ready = 0;
-      end
-       
-      always_ff @(posedge clk) begin
-           if (isValid) begin
-                if (xcounter == 10'd319 && ycounter == 10'd239) begin                    
-                    if (xscan > record_holder) begin
-                        y_record <= ycounter;
-                        record_holder <= xscan;
-                    end
-                    
-                    xcounter <= 10'd0;
-                    ycounter <= 10'd0;
-                    xscan <= 10'd0;
-                    
-                    y_center <= 10'd100; //put the real stuff back later
-                    x_center <= 10'd100;
-                    center_ready <= 1;
-                end else if (xcounter == 10'd0 && ycounter == 10'd0) begin
-                    y_record <= 10'd0; // try changing this to 100--nvm
-                    record_holder <= 10'd0;
-                    
-                    if (dil_bit) begin
-                        xscan <= xscan + 10'd1;
-                    end 
-                    
-                    xcounter <= xcounter + 1;
-                end else if (xcounter == 10'd319) begin
-                    if (xscan > record_holder) begin
-                        y_record <= ycounter;
-                        record_holder <= xscan;
-                    end
-                    
-                    xcounter <= 10'd0;
-                    ycounter <= ycounter + 10'd1;
-                    xscan <= 10'd0;
-                end else if (xcounter < 10'd319) begin
-                    if (dil_bit) begin
-                        xscan <= xscan + 1'd1;
-                    end 
-                   
-                    xcounter <= xcounter + 10'd1;
-                end
-            end
+                                
+    logic [24:0] x_accumulator; // accumulates all values of x
+    logic [24:0] y_accumulator; //and y
+    logic [24:0] bit_count; // counts number of bits that enter the stream
+    //logic [4:0] bit_shift;
+    logic div_start;
+    logic a_frame_passed;
+    
+    //for division
+//    logic [24:0] y_total;
+//    logic [24:0] x_total;
+    
+    initial begin
+        x_center = 25'd0;
+        y_center = 25'd0;
+        x_accumulator = 25'd0;
+        y_accumulator = 25'd0;
+        bit_count = 25'd0;
+        div_start = 0;
+        a_frame_passed = 0;
+    end
+    divider #(.WIDTH(25)) ydivide(.clk(clk), .start(div_start), .dividend(y_accumulator), 
+    .divider(bit_count), .quotient(y_center));
+
+    divider #(.WIDTH(25)) xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), 
+    .divider(bit_count), .quotient(x_center));
+    
+    always_ff @(posedge clk) begin
+        if (frame_blink) begin //start centroid calculation
+            a_frame_passed <= 1;
+            div_start <= 1;
+        end else if (!frame_blink && a_frame_passed) begin
+            y_accumulator <= 25'd0;
+            x_accumulator <= 25'd0;
+            bit_count <= 0;
+            div_start <= 0;
+            a_frame_passed <= 0;
+        end else if (erode_bit && isValid) begin
+            y_accumulator <= y_accumulator + vcount;
+            x_accumulator <= x_accumulator + hcount;
+            bit_count <= bit_count + 1; 
         end
-    endmodule
-                    //assign 
-//    *** beginning centroid detection module***               
-//    logic [24:0] x_accumulator; // accumulates all values of x
-//    logic [24:0] y_accumulator; //and y
-//    logic [24:0] bit_count; // counts number of bits that enter the stream
-//    logic [4:0] bit_shift;
-    
-//    logic [8:0] xcounter; //counts x-coordinate
-//    logic [8:0] ycounter; //counts y-coordinate
-    
-//    //for division
-//    logic [15:0] y_total;
-//    logic [15:0] x_total;
-    
-//    initial begin
-//        x_center = 25'd0;
-//        y_center = 25'd0;
-//        x_accumulator = 25'd0;
-//        y_accumulator = 25'd0;
-//        bit_count = 25'd0;
-//        xcounter = 9'd0;
-//        ycounter = 9'd0;
-//        center_ready = 0;
-//        bit_shift = 0;
-//    end
-    
-//    always_ff @(posedge clk) begin
-//    if (isValid) begin
-//        if (ycounter == 9'd239 && xcounter == 9'd319) begin //start centroid calculation
-//            //do comparisons to find power of 2 to divide by
-//            ycounter <= 9'd0; //reset y to zero
-//            xcounter <= 9'd0;
-            
-//            y_total <= y_accumulator[15:0];
-//            x_total <= x_accumulator[15:0];
-            
-//            if (bit_count < 25'd2) begin
-//                bit_shift <= 5'd0;
-//            end else if (bit_count < 25'd3) begin
-//                bit_shift <= 5'd1;
-//            end else if (bit_count < 25'd6) begin
-//                bit_shift <= 5'd2;
-//            end else if (bit_count < 25'd12) begin
-//                bit_shift <= 5'd3;
-//            end else if (bit_count < 25'd24) begin
-//                bit_shift <= 5'd4;
-//            end else if (bit_count < 25'd48) begin
-//                bit_shift <= 5'd5;
-//            end else if (bit_count < 25'd96) begin
-//                bit_shift <= 5'd6;
-//            end else if (bit_count < 25'd192) begin
-//                bit_shift <= 5'd7;
-//            end else if (bit_count < 25'd384) begin
-//                bit_shift <= 5'd8;
-//            end else if (bit_count < 25'd768) begin
-//                bit_shift <= 5'd9;
-//            end else if (bit_count < 25'd1536) begin
-//                bit_shift <= 5'd10;
-//            end else if (bit_count < 25'd3072) begin
-//                bit_shift <= 5'd11;
-//            end else if (bit_count < 25'd6144) begin
-//                bit_shift <= 5'd12;
-//            end else if (bit_count < 25'd12288) begin
-//                bit_shift <= 5'd13;
-//            end else if (bit_count < 25'd24576) begin
-//                bit_shift <= 5'd14;
-//            end else if (bit_count < 25'd49152) begin
-//                bit_shift <= 5'd15;
-//            end else if (bit_count < 25'd98304) begin
-//                bit_shift <= 5'd16;
-//            end
-//        end else if (ycounter == 9'd0 && xcounter == 9'd0) begin
-//            y_accumulator <= 25'd0;
-//            x_accumulator <= 25'd0;
-//            xcounter <= xcounter + 1;
-            
-//            x_center <= (x_total >> bit_shift);
-//            y_center <= (y_total >> bit_shift);
-//            center_ready <= 1;
-            
-//        end else if (xcounter == 9'd319) begin // incrase ycounter by one
-//            ycounter <= ycounter + 1;
-//            xcounter <= 9'd0;
-            
-//            if (dil_bit) begin
-//                bit_count <= bit_count + 1;
-//                x_accumulator <= x_accumulator + xcounter;
-//                y_accumulator <= y_accumulator + ycounter;
-//            end 
-//        end else if (xcounter < 9'd319) begin
-//            xcounter <= xcounter + 1;
-            
-//            if (dil_bit) begin
-//                bit_count <= bit_count + 1;
-//                x_accumulator <= x_accumulator + xcounter;
-//                y_accumulator <= y_accumulator + ycounter;
-//            end
-//        end
-//    end
-//    end
-//   ****end centroid detectin module*** 
-    //logic div_start; //start division
-    //logic [24:0] y_remainder;
-    //logic [24:0] x_remainder;
-    
-    //for the divider modules
-    //logic [24:0] y_total;
-    //logic [24:0] x_total;
-    //logic [24:0] one_bits;
-    
-//    //for the location setup case
-//    logic MSB_notfound;
-//    logic [4:0] MSB;
-//    logic [4:0] i;
-//    logic [4:0] bit_shift;
+    end
+endmodule
 
-    
-//    initial begin
-//        MSB_notfound = 1;
-//        x_center = 25'd0;
-//        y_center = 25'd0;
-//        x_accumulator = 25'd0;
-//        y_accumulator = 25'd0;
-//        bit_count = 25'd0;
-//        //div_start = 0;
-//        center_ready = 0;
-//    end
-
-
-//   // divider #(.WIDTH(25)) ydivide(.clk(clk), .start(div_start), .dividend(y_total), .divider(one_bits), .remainder(y_remainder), .quotient(y_center));
-//   // divider #(.WIDTH(25)) xdivide(.clk(clk), .start(div_start), .dividend(x_total), .divider(one_bits), .remainder(x_remainder), .quotient(x_center));
-
-// //****Jeana shit****
-//   ila_0 debugger(.clk(clk),        .probe0(center_ready),
-//                                        .probe1(hcount), 
-//                                        .probe2(vcount),
-//                                        .probe3(x_accumulator),
-//                                        .probe4(y_accumulator),
-//                                        .probe5(bit_count),
-//                                        .probe6(x_center),
-//                                        .probe7(y_center));
- 
-     
-//    parameter IMAGE_REFRESH = 5'b0001;
-//    parameter LOCATION_SETUP = 5'b0010;
-//    parameter ACCUMULATION = 5'b0100;
-//    parameter LOCATE = 5'b1000;
-    
-//    logic [3:0] state = ACCUMULATION;
-    
-//    always_ff @(posedge clk) begin
-//        case (state)
-//            ACCUMULATION: begin
-//              if (hcount == 11'd320 && vcount == 10'd240) begin
-//                    state <= LOCATION_SETUP;
-//              end else if (dil_bit) begin
-//                    x_accumulator <= x_accumulator + hcount;
-//                    y_accumulator <= y_accumulator + vcount;
-//                    bit_count <= bit_count + 25'd1;
-//              end
-//             end 
-//            LOCATION_SETUP: begin
-////              for (i=24; i>=0; i = i-1) begin
-////                    if (MSB_notfound && bit_count[i]) begin
-////                        MSB = i;
-////                        bit_shift = i;
-////                        MSB_notfound = 0;
-////                    end
-////              end
-//              //if (bit_count[MSB - 1] == 1) begin
-//               //     bit_shift <= bit_shift + 1;
-////              if (bit_count[24] == 1) begin
-////                    if (bit_count[23] == 1) begin
-////                        bit_shift <= 5'd25;
-////                    end else bit_shift <= 5'd24;
-////              end else if (bit_count[23] == 1) begin
-////                    if (bit_count[22] == 1) begin
-////                        bit_shift <= 5'd24;
-////                    end else bit_shift <= 5'd23;
-////              end else if (bit_count[22] == 1) begin
-////                    if (bit_count[21] == 1) begin
-////                        bit_shift <= 5'd23;
-////                    end else bit_shift <= 5'd22;
-////              end else if (bit_count[21] == 1) begin
-////                    if (bit_count[20] == 1) begin
-////                        bit_shift <= 5'd22;
-////                    end else bit_shift <= 5'd21;
-////              end else if (bit_count[20] == 1) begin
-////                    if (bit_count[19] == 1) begin
-////                        bit_shift <= 5'd21;
-////                    end else bit_shift <= 5'd20;
-////              end else if (bit_count[19] == 1) begin
-////                    if (bit_count[18] == 1) begin
-////                        bit_shift <= 5'd20;
-////                    end else bit_shift <= 5'd19;
-////              end else if (bit_count[18] == 1) begin
-////                    if (bit_count[17] == 1) begin
-////                        bit_shift <= 5'd19;
-////                    end else bit_shift <= 5'd18;
-////              end else if (bit_count[17] == 1) begin
-////                    if (bit_count[16] == 1) begin
-////                        bit_shift <= 5'd18;
-////                    end else bit_shift <= 5'd17;
-////              end else if (bit_count[16] == 1) begin
-////                    if (bit_count[15] == 1) begin
-////                        bit_shift <= 5'd24;
-////                    end else bit_shift <= 5'd23;
-////              end else if (bit_count[22] == 1) begin
-////                    if (bit_count[21] == 1) begin
-////                        bit_shift <= 5'd23;
-////                    end else bit_shift <= 5'd22;
-////              end else if (bit_count[21] == 1) begin
-////                    if (bit_count[20] == 1) begin
-////                        bit_shift <= 5'd22;
-////                    end else bit_shift <= 5'd21;
-////              end else if (bit_count[20] == 1) begin
-////                    if (bit_count[19] == 1) begin
-////                        bit_shift <= 5'd21;
-////                    end else bit_shift <= 5'd20;
-////              end else if (bit_count[19] == 1) begin
-////                    if (bit_count[18] == 1) begin
-////                        bit_shift <= 5'd20;
-////                    end else bit_shift <= 5'd19;
-////              end else if (bit_count[18] == 1) begin
-////                    if (bit_count[17] == 1) begin
-////                        bit_shift <= 5'd19;
-////                    end else bit_shift <= 5'd18;
-////              end else if (bit_count[17] == 1) begin
-////                    if (bit_count[16] == 1) begin
-////                        bit_shift <= 5'd18;
-////                    end else bit_shift <= 5'd17;
-
-
-
-
-//              end
-               
-//              state <= LOCATE;
-//            end
-//            LOCATE: begin
-//                //div_start <= 1;
-//                x_center <= x_accumulator >> bit_shift;
-//                y_center <= y_accumulator >> bit_shift;
-//                //one_bits <= bit_count;
-//                state <= IMAGE_REFRESH;
-//            end
-//            IMAGE_REFRESH: begin
-//                //div_start <= 0;
-//                x_accumulator <= 25'd0;
-//                y_accumulator <= 25'd0;
-//                bit_count <= 25'd0;
-//                state <= ACCUMULATION;
-//            end
-//        endcase    
-//    end 
-            
-//    always_ff @(posedge clk) begin
-//        if (y_center > 25'b0 && x_center > 25'b0) begin
-//             center_ready <= 1;
-//            end
-//        end
-
-//endmodule
+  
 
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
