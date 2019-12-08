@@ -227,104 +227,160 @@ module dilation(input clk,
                    output logic center_ready
                    );
                    
-    logic [24:0] x_accumulator; // accumulates all values of x
-    logic [24:0] y_accumulator; //and y
-    logic [24:0] bit_count; // counts number of bits that enter the stream
-    logic [4:0] bit_shift;
-    
-    logic [8:0] xcounter; //counts x-coordinate
-    logic [8:0] ycounter; //counts y-coordinate
-    
-    //for division
-    logic [15:0] y_total;
-    logic [15:0] x_total;
-    
-    initial begin
-        x_center = 25'd0;
-        y_center = 25'd0;
-        x_accumulator = 25'd0;
-        y_accumulator = 25'd0;
-        bit_count = 25'd0;
-        xcounter = 9'd0;
-        ycounter = 9'd0;
-        center_ready = 0;
-        bit_shift = 0;
-    end
-    
-    always_ff @(posedge clk) begin
-    if (isValid) begin
-        if (ycounter == 9'd239 && xcounter == 9'd319) begin //start centroid calculation
-            //do comparisons to find power of 2 to divide by
-            ycounter <= 9'd0; //reset y to zero
-            xcounter <= 9'd0;
-            
-            y_total <= y_accumulator[15:0];
-            x_total <= x_accumulator[15:0];
-            
-            if (bit_count < 25'd2) begin
-                bit_shift <= 5'd0;
-            end else if (bit_count < 25'd3) begin
-                bit_shift <= 5'd1;
-            end else if (bit_count < 25'd6) begin
-                bit_shift <= 5'd2;
-            end else if (bit_count < 25'd12) begin
-                bit_shift <= 5'd3;
-            end else if (bit_count < 25'd24) begin
-                bit_shift <= 5'd4;
-            end else if (bit_count < 25'd48) begin
-                bit_shift <= 5'd5;
-            end else if (bit_count < 25'd96) begin
-                bit_shift <= 5'd6;
-            end else if (bit_count < 25'd192) begin
-                bit_shift <= 5'd7;
-            end else if (bit_count < 25'd384) begin
-                bit_shift <= 5'd8;
-            end else if (bit_count < 25'd768) begin
-                bit_shift <= 5'd9;
-            end else if (bit_count < 25'd1536) begin
-                bit_shift <= 5'd10;
-            end else if (bit_count < 25'd3072) begin
-                bit_shift <= 5'd11;
-            end else if (bit_count < 25'd6144) begin
-                bit_shift <= 5'd12;
-            end else if (bit_count < 25'd12288) begin
-                bit_shift <= 5'd13;
-            end else if (bit_count < 25'd24576) begin
-                bit_shift <= 5'd14;
-            end else if (bit_count < 25'd49152) begin
-                bit_shift <= 5'd15;
-            end else if (bit_count < 25'd98304) begin
-                bit_shift <= 5'd16;
-            end
-        end else if (ycounter == 9'd0 && xcounter == 9'd0) begin
-            y_accumulator <= 25'd0;
-            x_accumulator <= 25'd0;
-            xcounter <= xcounter + 1;
-            
-            x_center <= (x_total >> bit_shift);
-            y_center <= (y_total >> bit_shift);
-            center_ready <= 1;
-            
-        end else if (xcounter == 9'd319) begin // incrase ycounter by one
-            ycounter <= ycounter + 1;
-            xcounter <= 9'd0;
-            
-            if (dil_bit) begin
-                bit_count <= bit_count + 1;
-                x_accumulator <= x_accumulator + xcounter;
-                y_accumulator <= y_accumulator + ycounter;
-            end 
-        end else if (xcounter < 9'd319) begin
-            xcounter <= xcounter + 1;
-            
-            if (dil_bit) begin
-                bit_count <= bit_count + 1;
-                x_accumulator <= x_accumulator + xcounter;
-                y_accumulator <= y_accumulator + ycounter;
+      logic [9:0] xcounter;
+      logic [9:0] ycounter; 
+      logic [9:0] xscan; //scans number of one bits in a row
+      logic [9:0] record_holder;
+      logic [9:0] y_record;
+      
+      initial begin 
+        xcounter = 10'd0;
+        ycounter = 10'd0;
+        xscan = 10'd0;
+        record_holder = 10'd0;
+        y_record = 10'd0;
+        center_ready <= 0;
+      end
+       
+      always_ff @(posedge clk) begin
+           if (isValid) begin
+                if (xcounter == 10'd319 && ycounter == 10'd239) begin                    
+                    if (xscan > record_holder) begin
+                        y_record <= ycounter;
+                    end
+                    
+                    xcounter <= 10'd0;
+                    ycounter <= 10'd0;
+                    
+                end else if (xcounter == 10'd0 && ycounter == 10'd0) begin
+                    y_center <= y_record;
+                    x_center <= 10'd100;
+                    center_ready <= 1;
+                    
+                    y_record <= 10'd0;
+                    
+                    if (dil_bit) begin
+                        xscan <= xscan + 10'd1;
+                    end 
+                end else if (xcounter == 10'd319) begin
+                    if (xscan > record_holder) begin
+                        y_record <= ycounter;
+                    end
+                    
+                    xcounter <= 10'd0;
+                    ycounter <= ycounter + 10'd1;
+                    xscan <= 10'd0;
+                end else if (xcounter < 10'd319) begin
+                    if (dil_bit) begin
+                        xscan <= xscan + 1'd1;
+                    end 
+                   
+                    xcounter <= xcounter + 10'd1;
+                end
             end
         end
-    end
-    end
+    endmodule
+                    //assign 
+//    *** beginning centroid detection module***               
+//    logic [24:0] x_accumulator; // accumulates all values of x
+//    logic [24:0] y_accumulator; //and y
+//    logic [24:0] bit_count; // counts number of bits that enter the stream
+//    logic [4:0] bit_shift;
+    
+//    logic [8:0] xcounter; //counts x-coordinate
+//    logic [8:0] ycounter; //counts y-coordinate
+    
+//    //for division
+//    logic [15:0] y_total;
+//    logic [15:0] x_total;
+    
+//    initial begin
+//        x_center = 25'd0;
+//        y_center = 25'd0;
+//        x_accumulator = 25'd0;
+//        y_accumulator = 25'd0;
+//        bit_count = 25'd0;
+//        xcounter = 9'd0;
+//        ycounter = 9'd0;
+//        center_ready = 0;
+//        bit_shift = 0;
+//    end
+    
+//    always_ff @(posedge clk) begin
+//    if (isValid) begin
+//        if (ycounter == 9'd239 && xcounter == 9'd319) begin //start centroid calculation
+//            //do comparisons to find power of 2 to divide by
+//            ycounter <= 9'd0; //reset y to zero
+//            xcounter <= 9'd0;
+            
+//            y_total <= y_accumulator[15:0];
+//            x_total <= x_accumulator[15:0];
+            
+//            if (bit_count < 25'd2) begin
+//                bit_shift <= 5'd0;
+//            end else if (bit_count < 25'd3) begin
+//                bit_shift <= 5'd1;
+//            end else if (bit_count < 25'd6) begin
+//                bit_shift <= 5'd2;
+//            end else if (bit_count < 25'd12) begin
+//                bit_shift <= 5'd3;
+//            end else if (bit_count < 25'd24) begin
+//                bit_shift <= 5'd4;
+//            end else if (bit_count < 25'd48) begin
+//                bit_shift <= 5'd5;
+//            end else if (bit_count < 25'd96) begin
+//                bit_shift <= 5'd6;
+//            end else if (bit_count < 25'd192) begin
+//                bit_shift <= 5'd7;
+//            end else if (bit_count < 25'd384) begin
+//                bit_shift <= 5'd8;
+//            end else if (bit_count < 25'd768) begin
+//                bit_shift <= 5'd9;
+//            end else if (bit_count < 25'd1536) begin
+//                bit_shift <= 5'd10;
+//            end else if (bit_count < 25'd3072) begin
+//                bit_shift <= 5'd11;
+//            end else if (bit_count < 25'd6144) begin
+//                bit_shift <= 5'd12;
+//            end else if (bit_count < 25'd12288) begin
+//                bit_shift <= 5'd13;
+//            end else if (bit_count < 25'd24576) begin
+//                bit_shift <= 5'd14;
+//            end else if (bit_count < 25'd49152) begin
+//                bit_shift <= 5'd15;
+//            end else if (bit_count < 25'd98304) begin
+//                bit_shift <= 5'd16;
+//            end
+//        end else if (ycounter == 9'd0 && xcounter == 9'd0) begin
+//            y_accumulator <= 25'd0;
+//            x_accumulator <= 25'd0;
+//            xcounter <= xcounter + 1;
+            
+//            x_center <= (x_total >> bit_shift);
+//            y_center <= (y_total >> bit_shift);
+//            center_ready <= 1;
+            
+//        end else if (xcounter == 9'd319) begin // incrase ycounter by one
+//            ycounter <= ycounter + 1;
+//            xcounter <= 9'd0;
+            
+//            if (dil_bit) begin
+//                bit_count <= bit_count + 1;
+//                x_accumulator <= x_accumulator + xcounter;
+//                y_accumulator <= y_accumulator + ycounter;
+//            end 
+//        end else if (xcounter < 9'd319) begin
+//            xcounter <= xcounter + 1;
+            
+//            if (dil_bit) begin
+//                bit_count <= bit_count + 1;
+//                x_accumulator <= x_accumulator + xcounter;
+//                y_accumulator <= y_accumulator + ycounter;
+//            end
+//        end
+//    end
+//    end
+//   ****end centroid detectin module*** 
     //logic div_start; //start division
     //logic [24:0] y_remainder;
     //logic [24:0] x_remainder;
@@ -486,7 +542,7 @@ module dilation(input clk,
 //            end
 //        end
 
-endmodule
+//endmodule
 
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
