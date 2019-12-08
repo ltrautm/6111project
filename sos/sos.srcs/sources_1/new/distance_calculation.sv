@@ -94,34 +94,59 @@ module distance_calculation(
     logic div_1a_valid, div_1a_ready, div_1b_valid, div_1b_ready,
           div_1result_valid, div_1result_ready;
     
-    logic div_ready, div_result_valid;
-    assign div_1a_valid = 1;
-    assign div_1b_valid = 1;
-    assign div_1result_ready = 1;
-    logic signed [16:0] a = 'd15;
-    logic signed [16:0] b = 'd2;
-    logic signed [16:0] c;
+    logic dividend_result_valid;
+    logic divisor_result_valid;
+    
+    logic signed [31:0] dividend_int32 = 32'd15;
+    logic signed [63:0] dividend_float64;
+    logic signed [31:0] divisor_int32 = 32'd2;
+    logic signed [63:0] divisor_float64;
+    
+    logic division_result_valid;
+    logic signed [63:0] division_result;
+
+//    logic conv1_a_tvalid;
+//    logic conv1_a_tready;
+//    logic [31:0] conv1_a_tdata;
+//    logic conv1_result_tvalid;
+//    logic conv1_result_tready;
+//    logic [63:0] conv1_result_tdata;
+    
+//    assign conv1_a_tvalid = 1;
+//    assign conv1_a_tdata = dividend_int32;
+//    assign dividend_float64 = conv1_result_tdata;
     
     int_to_float conv1(
-        .aclk(clk_in), //: IN STD_LOGIC;
-        .s_axis_a_tvalid(div_1a_valid), //: IN STD_LOGIC;
-        .s_axis_a_tready(div_ready), //: OUT STD_LOGIC;
-        .s_axis_a_tdata(a), //: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-        .m_axis_result_tvalid(div_result_valid), //: OUT STD_LOGIC;
-        .m_axis_result_tready(div_1result_ready), //: IN STD_LOGIC;
-        .m_axis_result_tdata(c) //: OUT STD_LOGIC_VECTOR(31 DOWNTO 0)
-    );     
+        .aclk(clk_in),                              //: IN STD_LOGIC;
+        .s_axis_a_tvalid(1),                        //: IN STD_LOGIC;
+        .s_axis_a_tready( ),                //: OUT STD_LOGIC;
+        .s_axis_a_tdata(dividend_int32),            //: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        .m_axis_result_tvalid(dividend_result_valid),    //: OUT STD_LOGIC;
+        .m_axis_result_tready(1),                       //: IN STD_LOGIC;
+        .m_axis_result_tdata(dividend_float64)       //: OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
+    ); 
+    
+    int_to_float conv2(
+        .aclk(clk_in),                                   //: IN STD_LOGIC;
+        .s_axis_a_tvalid(1),                             //: IN STD_LOGIC;
+        .s_axis_a_tready( ),                             //: OUT STD_LOGIC;
+        .s_axis_a_tdata(divisor_int32),                  //: IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        .m_axis_result_tvalid(divisor_result_valid),     //: OUT STD_LOGIC;
+        .m_axis_result_tready(1),                        //: IN STD_LOGIC;
+        .m_axis_result_tdata(divisor_float64)            //: OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
+    ); 
+        
     floating_point_0 div1(
         .aclk(clk_in),     
-        .s_axis_a_tvalid(div_1a_valid), // IN STD_LOGIC;
-        .s_axis_a_tready(div_1a_ready), // OUT STD_LOGIC;
-        .s_axis_a_tdata(c), // IN STD_LOGIC_VECTOR(63 DOWNTO 0);
-        .s_axis_b_tvalid(div_1b_valid), // IN STD_LOGIC;
-        .s_axis_b_tready(div_1b_ready), // OUT STD_LOGIC;
-        .s_axis_b_tdata(b), //: IN STD_LOGIC_VECTOR(63 DOWNTO 0);
-        .m_axis_result_tvalid(div_1result_valid), //: OUT STD_LOGIC;
-        .m_axis_result_tready(div_1result_ready), //: IN STD_LOGIC;
-        .m_axis_result_tdata(scaled1_x) //: OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
+        .s_axis_a_tvalid(dividend_result_valid),         // IN STD_LOGIC;
+        .s_axis_a_tready( ),             // OUT STD_LOGIC;
+        .s_axis_a_tdata(dividend_float64),          // IN STD_LOGIC_VECTOR(63 DOWNTO 0);
+        .s_axis_b_tvalid(divisor_result_valid),                        // IN STD_LOGIC;
+        .s_axis_b_tready( ),             // OUT STD_LOGIC;
+        .s_axis_b_tdata(divisor_float64),           //: IN STD_LOGIC_VECTOR(63 DOWNTO 0);
+        .m_axis_result_tvalid(division_result_valid),   //: OUT STD_LOGIC;
+        .m_axis_result_tready(1),                   //: IN STD_LOGIC;
+        .m_axis_result_tdata(division_result)             //: OUT STD_LOGIC_VECTOR(63 DOWNTO 0)
         );
     
         
@@ -165,6 +190,7 @@ module distance_calculation(
 //        );
             
     always_ff @(posedge clk_in)begin    
+        // STAGE 1
         world1_x <= x1*P1_inv11 + y1*P1_inv21 + 1*P1_inv31;
         world1_y <= x1*P1_inv12 + y1*P1_inv22 + 1*P1_inv32;
         scaling1 <= x1*P1_inv13 + y1*P1_inv23 + 1*P1_inv33;
@@ -175,7 +201,7 @@ module distance_calculation(
         scaling2 <= x2*P2_inv13 + y2*P2_inv23 + 1*P2_inv33;
         // divide both world2_x and world2_y by scaling2
         
-        
+        //STAGE 2
         u1 <= world1_x - C1_1;
         u2 <= world1_y - C1_2;
         u3 <= - C1_3;
@@ -184,14 +210,33 @@ module distance_calculation(
         v2 <= world2_y - C2_2;
         v3 <= - C2_3;
         
-        t_cpa <= -( (C1_1 - C2_1)*(u1 - v1) + (C1_2 - C2_2)*(u2 - v2) + (C1_3 - C2_3)*(u3 - v3) );
+        // STAGE 3
+        t_cpa <= -( (C1_1 - C2_1)*(u1 - v1) + (C1_2 - C2_2)*(u2 - v2) + (C1_3 - C2_3)*(u3 - v3) ); // break these up
         // divide t_cpa by ((u1 - v1)*(u1 - v1) + (u2 - v2)*(u2 - v2) + (u3 - v3)*(u3 - v3))
-        
-        world_x <= (C1_1 + t_cpa*u1 + C2_1 + t_cpa*v1) >> 1;
+        // u1_delay
+        // u2_delay
+        // u3_delay
+        // v1_delay
+        // v2_delay
+        // v3_delay
+         
+        // STAGE 4
+        world_x <= (C1_1 + t_cpa*u1 + C2_1 + t_cpa*v1) >> 1; // change these to delays
         world_y <= (C1_2 + t_cpa*u2 + C2_2 + t_cpa*v2) >> 1;
         world_z <= (C1_3 + t_cpa*u3 + C2_3 + t_cpa*v3) >> 1;
         
+        // STAGE 5
+        // do individual multiplications
+        // world_x_sq 
+        // world_y_sq
+        // world_z_sq
+        
+        // STAGE 6
+        // add to get distance (change below to use _sq signals)
         distance <= world_x * world_x + world_y * world_y + world_z * world_z;
+        
+        // STAGE 7
+        // compute sqrt
      
     end
     
