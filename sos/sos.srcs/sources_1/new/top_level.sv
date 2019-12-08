@@ -328,6 +328,13 @@ module display_select (
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
    
+   //centroid stuff
+   logic [11:0] centroid;
+   logic [11:0] pixel_outta;
+   assign pixel_out = centroid + pixel_outta;
+   
+   //end centroid stuff
+   
    picture_blob  dulcecito(.pixel_clk_in(vclock_in), 
                             .x_in(11'd200), 
                             .hcount_in(hcount_in),
@@ -337,8 +344,18 @@ module display_select (
 //                            .original(selectors[1]), 
 //                            .processed(selectors[0]), 
                             .process_selects(processing), 
-                            .pixel_out(pixel_out),
+                            .pixel_out(pixel_outta),
                             .clk_260mhz(clk_200mhz));
+                            
+                            
+    blob #(.WIDTH(16),.HEIGHT(16),.COLOR(12'hFF0))   // yellow!
+     the_centroid(.pixel_clk_in(vclock_in),
+                    .hcount_in(hcount_in),
+                    .vcount_in(vcount_in), 
+//                    .original(selectors[1]), 
+//                    .processed(selectors[0]), 
+                    .process_selects(processing), 
+                    .pixel_out(centroid)); 
 
 endmodule
 
@@ -390,6 +407,8 @@ module picture_blob
    
    assign pixxel_in = {pixel_in[11:8], 4'b0, pixel_in[7:4], 4'b0, pixel_in[3:0], 4'b0};
    
+   logic centro_listo;
+   
    object_detection ob_det(.clk(clk_260mhz), 
                             .dilate(process_selects[1]), 
                             .erode(process_selects[0]), 
@@ -417,6 +436,78 @@ module picture_blob
 //   end
 endmodule
 
+////////BLOB////////
+module blob
+   #(parameter WIDTH = 64,            // default width: 64 pixels
+               HEIGHT = 64,           // default height: 64 pixels
+               COLOR = 12'hFFF)  // default color: white
+   (input pixel_clk_in,
+    input [10:0] hcount_in,
+    input [9:0] vcount_in,
+//    input original, //selection of original or processed image
+//    input processed,
+    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [11:0] pixel_out);
+   
+   logic clk_200mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
+   
+   logic [24:0] yy;//y-coordinate of center
+   logic [24:0] xx;//x-coordinate of the center
+   logic [23:0] pixel_in; //pixel that goes in to be binarized
+   logic [11:0] pixxel; //output from image processing
+   
+    
+   logic centro_listo; // the center is ready to be displayed
+   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+  
+  
+   // Jeana Code
+   
+//    parameter IDLE = 2'b01;
+//    parameter RENDER = 2'b10;
+//    logic [1:0] state = IDLE; 
+    
+//    always_ff @(posedge pixel_clk_in) begin
+//        case (state)
+//            IDLE: begin
+//                if(centro_listo)begin
+//                    state <= RENDER;
+//                end
+//            end
+//            RENDER: begin
+//                if ((hcount_in >= xx && hcount_in < (xx + WIDTH)) && 
+//                    (vcount_in >= yy && vcount_in < (yy + HEIGHT))) begin
+//                    pixel_out <= COLOR;
+//                end else begin
+//                    pixel_out <= 0;
+//                end
+//                state <= IDLE;
+//            end
+//        endcase      
+//    end   
+    
+   // Ryan Code
+   
+           
+
+   always_ff @(posedge pixel_clk_in) begin
+        if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
+           (vcount_in >= yy && vcount_in < (yy+HEIGHT)) && 
+            centro_listo) begin
+            pixel_out <= COLOR;
+        end else begin
+            pixel_out <= 0;
+        end
+          
+   end
+
+endmodule
+
+
+
+///////ENDBLOB///////
 
 ///////////////////////////////////////////////////////////////////////////////
 //
