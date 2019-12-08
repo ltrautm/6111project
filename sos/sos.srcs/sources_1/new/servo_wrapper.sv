@@ -46,18 +46,18 @@ module servo_wrapper(
             hz_count <= 28'b0;
             
             if (myang >= 8'd250) mydir <= 0;
-            else if (myang <= 8'd5) mydir <= 5;
+            else if (myang <= 8'd5) mydir <= 1;
             
             if (mydir == 0) myang <= myang-28'd5;
             else if (mydir == 1) myang <= myang +28'd5;
         end else begin
-            hz_count <= hz_count+28'b1;
+            hz_count <= hz_count+28'd1;
         end
     
     end
 
 
-    servo_controller mysc(.clk(clk),
+    servo_controller mysc(.clk(clk_50mhz),
                             .rst(1'b0),
                             .position(myang),
                             .servo(js));

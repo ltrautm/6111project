@@ -19,7 +19,7 @@ module top_level(
    input [2:0] jd,
    output   jbclk,
    output   jdclk,
-   output   jd4,
+   output  logic jdfour,
    output[3:0] vga_r,
    output[3:0] vga_b,
    output[3:0] vga_g,
@@ -75,7 +75,7 @@ module top_level(
 //    end
 
     //try to use the 65 or 200 mhz clocks to generate a 50mhz clock
-    servo_wrapper myservo(.clk(clk_260mhz), .js(jd4));
+//    servo_wrapper myservo(.clk(clk_260mhz), .js(jd4));
     
     
     
@@ -221,6 +221,9 @@ module top_level(
 //    display_select ds(.vclock_in(clk_65mhz), .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
 //                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
                 
+    logic clk_200mhz;
+    logic clk_200mhz2;
+                
     display_select ds(.vclock_in(clk_65mhz),
 //                        .selectors(sw[15:14]), 
                         .processing(sw[13:10]),
@@ -233,7 +236,8 @@ module top_level(
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
-                        .pixel_out(pixel));
+                        .pixel_out(pixel),
+                        .clk_200mhz(clk_200mhz));
                         
     display_select ds2(.vclock_in(clk_65mhz),
 //                        .selectors(sw[15:14]), 
@@ -247,7 +251,8 @@ module top_level(
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
-                        .pixel_out(pixel2));
+                        .pixel_out(pixel2),
+                        .clk_200mhz(clk_200mhz2));
 
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
@@ -289,6 +294,8 @@ module top_level(
     assign vga_hs = ~hs;
     assign vga_vs = ~vs;
 
+    servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
+
 endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +318,8 @@ module display_select (
    output logic phsync_out,       // pong game's horizontal sync
    output logic pvsync_out,       // pong game's vertical sync
    output logic pblank_out,       // pong game's blanking
-   output logic [11:0] pixel_out  // pong game's pixel  // r=11:8, g=7:4, b=3:0
+   output logic [11:0] pixel_out,  // pong game's pixel  // r=11:8, g=7:4, b=3:0
+   output logic clk_200mhz
    );
 
         
@@ -320,7 +328,6 @@ module display_select (
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
    
-
    picture_blob  dulcecito(.pixel_clk_in(vclock_in), 
                             .x_in(11'd200), 
                             .hcount_in(hcount_in),
@@ -330,7 +337,8 @@ module display_select (
 //                            .original(selectors[1]), 
 //                            .processed(selectors[0]), 
                             .process_selects(processing), 
-                            .pixel_out(pixel_out));
+                            .pixel_out(pixel_out),
+                            .clk_260mhz(clk_200mhz));
 
 endmodule
 
@@ -350,7 +358,8 @@ module picture_blob
 //    input original, //selection of original or processed image
 //    input processed,
     input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
-    output logic [11:0] pixel_out);
+    output logic [11:0] pixel_out,
+    output logic clk_260mhz);
 
    logic [15:0] image_addr;   // num of bits for 256*240 ROM
    logic [7:0] image_bits, red_mapped, green_mapped, blue_mapped;
@@ -374,7 +383,7 @@ module picture_blob
 //   logic [23:0] pixel_in; //pixel that goes in to be binarized
 //   logic [11:0] pixxel; //output from image processing
    
-   logic clk_260mhz;
+//   logic clk_260mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
    
    logic [23:0] pixxel_in;
