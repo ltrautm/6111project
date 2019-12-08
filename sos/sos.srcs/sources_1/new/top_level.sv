@@ -15,9 +15,11 @@ module top_level(
    input btnc, btnu, btnl, btnr, btnd,
    input [7:0] ja,
    input [2:0] jb,
-   output   jbclk,
+   input [7:0] jc,
    input [2:0] jd,
+   output   jbclk,
    output   jdclk,
+   output  logic jdfour,
    output[3:0] vga_r,
    output[3:0] vga_b,
    output[3:0] vga_g,
@@ -32,6 +34,9 @@ module top_level(
     logic clk_65mhz;
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
+    
+//    logic clk_50mhz;
+//    clk_wiz_1 clk50(.clk_in1(clk_100mhz), .clk_out1(clk_50mhz));
 
     wire [31:0] data;      //  instantiate 7-segment display; display (8) 4-bit hex
     wire [6:0] segments;
@@ -48,11 +53,39 @@ module top_level(
     assign led17_r = btnl;
     assign led17_g = btnc;
     assign led17_b = btnr;
+    
+    
+    ////Servo Controller//////
+//    logic clkk_100mhz;
+//    assign clkk_100mhz = clk_100mhz;
+
+    //make a 50mhz clock
+//    logic clk_50mhz = 1'b0;
+    
+//    logic county = 1'b0;
+//    always_ff @(posedge clk_100mhz) begin
+//        if (county == 1'b1) begin
+//            county <= 1'b0;
+//            clk_50mhz <= 1'b0;
+//        end else begin
+//            county <= 1'b1;
+//            clk_50mhz <= 1'b1; 
+//        end
+    
+//    end
+
+    //try to use the 65 or 200 mhz clocks to generate a 50mhz clock
+//    servo_wrapper myservo(.clk(clk_260mhz), .js(jd4));
+    
+    
+    
+    /////Display Initialization//////
 
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
     wire hsync, vsync, blank;
     wire [11:0] pixel;
+    wire [11:0] pixel2;
     reg [11:0] rgb;    
     xvga xvga1(.vclock_in(clk_65mhz),.hcount_out(hcount),.vcount_out(vcount),
           .hsync_out(hsync),.vsync_out(vsync),.blank_out(blank));
@@ -62,43 +95,28 @@ module top_level(
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
    
-   
-    logic xclk;
-    logic[1:0] xclk_count;
+   ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
     
-    logic pclk_buff, pclk_in;
-    logic vsync_buff, vsync_in;
-    logic href_buff, href_in;
-    logic[7:0] pixel_buff, pixel_in;
-    
-    logic [11:0] cam;
+    logic [11:0] cam1;
+    logic pclk_in;
     logic [11:0] frame_buff_out;
     logic [15:0] output_pixels;
     logic [15:0] old_output_pixels;
     logic [12:0] processed_pixels;
-    logic [3:0] red_diff;
-    logic [3:0] green_diff;
-    logic [3:0] blue_diff;
     logic valid_pixel;
     logic frame_done_out;
+    
+    logic she_valid;
+    assign she_valid = valid_pixel & ~sw[7];
     
     logic [16:0] pixel_addr_in;
     logic [16:0] pixel_addr_out;
     
-    assign xclk = (xclk_count >2'b01);
-    assign jbclk = xclk;
-    assign jdclk = xclk;
     
-    assign red_diff = (output_pixels[15:12]>old_output_pixels[15:12])?output_pixels[15:12]-old_output_pixels[15:12]:old_output_pixels[15:12]-output_pixels[15:12];
-    assign green_diff = (output_pixels[10:7]>old_output_pixels[10:7])?output_pixels[10:7]-old_output_pixels[10:7]:old_output_pixels[10:7]-output_pixels[10:7];
-    assign blue_diff = (output_pixels[4:1]>old_output_pixels[4:1])?output_pixels[4:1]-old_output_pixels[4:1]:old_output_pixels[4:1]-output_pixels[4:1];
-
-    
-    
-    blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), 
+    blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
                              .dina(processed_pixels),
-                             .wea(valid_pixel),
+                             .wea(she_valid),
                              .addrb(pixel_addr_out),
                              .clkb(clk_65mhz),
                              .doutb(frame_buff_out));
@@ -112,70 +130,130 @@ module top_level(
     end
     
     always_ff @(posedge clk_65mhz) begin
-        pclk_buff <= jb[0];//WAS JB
-        vsync_buff <= jb[1]; //WAS JB
-        href_buff <= jb[2]; //WAS JB
-        pixel_buff <= ja;
-        pclk_in <= pclk_buff;
-        vsync_in <= vsync_buff;
-        href_in <= href_buff;
-        pixel_in <= pixel_buff;
         old_output_pixels <= output_pixels;
-        xclk_count <= xclk_count + 2'b01;
-        if (sw[3])begin
-            //processed_pixels <= {red_diff<<2, green_diff<<2, blue_diff<<2};
-            processed_pixels <= output_pixels - old_output_pixels;
-        end else if (sw[4]) begin
-            if ((output_pixels[15:12]>4'b1000)&&(output_pixels[10:7]<4'b1000)&&(output_pixels[4:1]<4'b1000))begin
-                processed_pixels <= 12'hF00;
-            end else begin
-                processed_pixels <= 12'h000;
-            end
-        end else if (sw[5]) begin
-            if ((output_pixels[15:12]<4'b1000)&&(output_pixels[10:7]>4'b1000)&&(output_pixels[4:1]<4'b1000))begin
-                processed_pixels <= 12'h0F0;
-            end else begin
-                processed_pixels <= 12'h000;
-            end
-        end else if (sw[6]) begin
-            if ((output_pixels[15:12]<4'b1000)&&(output_pixels[10:7]<4'b1000)&&(output_pixels[4:1]>4'b1000))begin
-                processed_pixels <= 12'h00F;
-            end else begin
-                processed_pixels <= 12'h000;
-            end
-        end else begin
-            processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};
-        end
-            
+        processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
     end
-    assign pixel_addr_out = sw[2]?((hcount>>1)+(vcount>>1)*32'd320):hcount+vcount*32'd320;
-    assign cam = sw[2]&&((hcount<640) &&  (vcount<480))?frame_buff_out:~sw[2]&&((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
-    
-//    ila_0 joes_ila(.clk(clk_65mhz),    .probe0(pixel_in), 
-//                                        .probe1(pclk_in), 
-//                                        .probe2(vsync_in),
-//                                        .probe3(href_in),
-//                                        .probe4(jbclk));
-                                        
-   camera_read  my_camera(.p_clock_in(pclk_in),
-                          .vsync_in(vsync_in),
-                          .href_in(href_in),
-                          .p_data_in(pixel_in),
-                          .pixel_data_out(output_pixels),
-                          .pixel_valid_out(valid_pixel),
-                          .frame_done_out(frame_done_out));
+  
+    assign pixel_addr_out = hcount+vcount*32'd320;
+//    assign cam1 = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
+    assign cam1 = frame_buff_out;
+                                  
+                                  
+    camera_wrapper my_wrap(
+                           .clk_65mhz(clk_65mhz),
+                           .j0(jd[0]), .j1(jd[1]), .j2(jd[2]), //WAS JB
+                           .ju(jc),  //WAS JA
+                           .output_pixels(output_pixels),
+                           .valid_pixel(valid_pixel),
+                           .jclk(jdclk),
+                           .pclk_in(pclk_in),
+                           .frame_done_out(frame_done_out));
+                           
+                           
+   ////////////////////////////////////////////CAMERA_2////////////////////////////////////////////                        
    
-    // UP and DOWN buttons for pong paddle
-    wire up,down;
-    debounce db2(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnu),.clean_out(up));
-    debounce db3(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnd),.clean_out(down));
+    logic [11:0] cam2;
+    logic pclk_in2;
+    logic [11:0] frame_buff_out2;
+    logic [15:0] output_pixels2;
+    logic [15:0] old_output_pixels2;
+    logic [12:0] processed_pixels2;
+    logic valid_pixel2;
+    logic frame_done_out2;
+    
+    logic she_valid2;
+    assign she_valid2 = valid_pixel2 & ~sw[7];
+    
+    logic [16:0] pixel_addr_in2;
+    logic [16:0] pixel_addr_out2;
+    
+    
+    
+    blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2), //take a pic based on switch and  
+                             .clka(pclk_in2),
+                             .dina(processed_pixels2),
+                             .wea(she_valid2),
+                             .addrb(pixel_addr_out2),
+                             .clkb(clk_65mhz),
+                             .doutb(frame_buff_out2));
+    
+    always_ff @(posedge pclk_in2)begin
+        if (frame_done_out2)begin
+            pixel_addr_in2 <= 17'b0;  
+        end else if (valid_pixel2)begin
+            pixel_addr_in2 <= pixel_addr_in2 +1;  
+        end
+    end
+    
+    always_ff @(posedge clk_65mhz) begin
+        old_output_pixels2 <= output_pixels2;
+        processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
+    end
+  
+    assign pixel_addr_out2 = hcount+vcount*32'd320;
+    assign cam2 = frame_buff_out2;
+                                  
+                                  
+    camera_wrapper my_wrap2(
+                           .clk_65mhz(clk_65mhz),
+                           .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
+                           .ju(ja),
+                           .output_pixels(output_pixels2),
+                           .valid_pixel(valid_pixel2),
+                           .jclk(jbclk),
+                           .pclk_in(pclk_in2),
+                           .frame_done_out(frame_done_out2));
+   
+   
+   
+   
+   /////////end CAMERA_2//////////
+   
+   ////Camera 1 and 2 fusion on display
+   logic [11:0] cam;
+   
+//   if ((hcount<320) &&  (vcount<240)) cam <= cam1;
+//   else cam <= 12'h000;
+                                  
 
     wire phsync,pvsync,pblank;
-    pong_game pg(.vclock_in(clk_65mhz),.reset_in(reset),
-                .up_in(up),.down_in(down),.pspeed_in(sw[15:12]),
-                .hcount_in(hcount),.vcount_in(vcount),
-                .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
-                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank),.pixel_out(pixel));
+    
+//    display_select ds(.vclock_in(clk_65mhz), .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
+//                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
+                
+    logic clk_200mhz;
+    logic clk_200mhz2;
+                
+    display_select ds(.vclock_in(clk_65mhz),
+//                        .selectors(sw[15:14]), 
+                        .processing(sw[13:10]),
+                        .pixel_in(cam1),
+                        .hcount_in(hcount),
+                        .vcount_in(vcount),
+                        .hsync_in(hsync),
+                        .vsync_in(vsync),
+                        .blank_in(blank),
+                        .phsync_out(phsync),
+                        .pvsync_out(pvsync),
+                        .pblank_out(pblank),
+                        .pixel_out(pixel),
+                        .clk_200mhz(clk_200mhz));
+                        
+    display_select ds2(.vclock_in(clk_65mhz),
+//                        .selectors(sw[15:14]), 
+                        .processing(sw[13:10]),
+                        .pixel_in(cam2),
+                        .hcount_in(hcount),
+                        .vcount_in(vcount),
+                        .hsync_in(hsync),
+                        .vsync_in(vsync),
+                        .blank_in(blank),
+                        .phsync_out(phsync),
+                        .pvsync_out(pvsync),
+                        .pblank_out(pblank),
+                        .pixel_out(pixel2),
+                        .clk_200mhz(clk_200mhz2));
+
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
                    hcount == 512 | vcount == 384);
@@ -200,11 +278,13 @@ module top_level(
          vs <= pvsync;
          b <= pblank;
          //rgb <= pixel;
+         if ((hcount<320) &&  (vcount<240)) cam <= pixel; //left camera display
+         else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= pixel2; //right camera display
+//         else if ((hcount<320) && (vcount>240) && (vcount<480)) cam <= pixel; //eroded left camera
+         else cam <= 12'h000;
          rgb <= cam;
       end
     end
-
-//    assign rgb = sw[0] ? {12{border}} : pixel ; //{{4{hcount[7]}}, {4{hcount[6]}}, {4{hcount[5]}}};
 
     // the following lines are required for the Nexys4 VGA circuit - do not change
     assign vga_r = ~b ? rgb[11:8]: 0;
@@ -214,60 +294,220 @@ module top_level(
     assign vga_hs = ~hs;
     assign vga_vs = ~vs;
 
+    servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
+
 endmodule
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// pong_game: the game itself!
+// display-select: wrapper for object detection
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-module pong_game (
+module display_select (
    input vclock_in,        // 65MHz clock
-   input reset_in,         // 1 to initialize module
-   input up_in,            // 1 when paddle should move up
-   input down_in,          // 1 when paddle should move down
-   input [3:0] pspeed_in,  // puck speed in pixels/tick 
    input [10:0] hcount_in, // horizontal index of current pixel (0..1023)
    input [9:0]  vcount_in, // vertical index of current pixel (0..767)
    input hsync_in,         // XVGA horizontal sync signal (active low)
    input vsync_in,         // XVGA vertical sync signal (active low)
    input blank_in,         // XVGA blanking (1 means output black pixel)
+//   input [1:0] selectors,  // selects between normal or processed image
+   input [3:0] processing, // selects which kind of process is being done
+   input [11:0] pixel_in,
         
-   output phsync_out,       // pong game's horizontal sync
-   output pvsync_out,       // pong game's vertical sync
-   output pblank_out,       // pong game's blanking
-   output [11:0] pixel_out  // pong game's pixel  // r=23:16, g=15:8, b=7:0 
+   output logic phsync_out,       // pong game's horizontal sync
+   output logic pvsync_out,       // pong game's vertical sync
+   output logic pblank_out,       // pong game's blanking
+   output logic [11:0] pixel_out,  // pong game's pixel  // r=11:8, g=7:4, b=3:0
+   output logic clk_200mhz
    );
 
-   wire [2:0] checkerboard;
         
-   // REPLACE ME! The code below just generates a color checkerboard
-   // using 64 pixel by 64 pixel squares.
-   
+
    assign phsync_out = hsync_in;
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
-   assign checkerboard = hcount_in[8:6] + vcount_in[8:6];
+   
+   //centroid stuff
+   logic [11:0] centroid;
+   logic [11:0] pixel_outta;
+   assign pixel_out = centroid + pixel_outta;
+   
+   //end centroid stuff
+   
+   picture_blob  dulcecito(.pixel_clk_in(vclock_in), 
+                            .x_in(11'd200), 
+                            .hcount_in(hcount_in),
+                            .y_in(10'd200), 
+                            .vcount_in(vcount_in), 
+                            .pixel_in(pixel_in),
+//                            .original(selectors[1]), 
+//                            .processed(selectors[0]), 
+                            .process_selects(processing), 
+                            .pixel_out(pixel_outta),
+                            .clk_260mhz(clk_200mhz));
+                            
+                            
+    blob #(.WIDTH(16),.HEIGHT(16),.COLOR(12'hFF0))   // yellow!
+     the_centroid(.pixel_clk_in(vclock_in),
+                    .hcount_in(hcount_in),
+                    .vcount_in(vcount_in), 
+//                    .original(selectors[1]), 
+//                    .processed(selectors[0]), 
+                    .process_selects(processing), 
+                    .pixel_out(centroid)); 
 
-   // here we use three bits from hcount and vcount to generate the
-   // checkerboard
-
-   assign pixel_out = {{4{checkerboard[2]}}, {4{checkerboard[1]}}, {4{checkerboard[0]}}} ;
-     
 endmodule
 
-module synchronize #(parameter NSYNC = 3)  // number of sync flops.  must be >= 2
-                   (input clk,in,
-                    output reg out);
+///////////////////////////////////////////////////////////////////////////////
+//
+// picture_blob: displays the image manipu40.88lated 
+//
+///////////////////////////////////////////////////////////////////////////////
 
-  reg [NSYNC-2:0] sync;
+module picture_blob
+   #(parameter WIDTH = 320,     // default picture width
+               HEIGHT = 240)    // default picture height
+   (input pixel_clk_in,
+    input [10:0] x_in,hcount_in,
+    input [9:0] y_in,vcount_in,
+    input [11:0] pixel_in,
+//    input original, //selection of original or processed image
+//    input processed,
+    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [11:0] pixel_out,
+    output logic clk_260mhz);
 
-  always_ff @ (posedge clk)
-  begin
-    {out,sync} <= {sync[NSYNC-2:0],in};
-  end
+   logic [15:0] image_addr;   // num of bits for 256*240 ROM
+   logic [7:0] image_bits, red_mapped, green_mapped, blue_mapped;
+   
+
+
+   // calculate rom address and read the location
+//   assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
+//   m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
+
+   // use color map to create 4 bits R, 4 bits G, 4 bits B
+   // since the image is greyscale, just replicate the red pixels
+   // and not bother with the other two color maps.
+//   red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
+//   green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
+//   blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
+   // note the one clock cycle delay in pixel!
+   
+   logic [9:0] yy;
+   logic [9:0] xx;
+//   logic [23:0] pixel_in; //pixel that goes in to be binarized
+//   logic [11:0] pixxel; //output from image processing
+   
+//   logic clk_260mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
+   
+   logic [23:0] pixxel_in;
+   
+   assign pixxel_in = {pixel_in[11:8], 4'b0, pixel_in[7:4], 4'b0, pixel_in[3:0], 4'b0};
+   
+   logic centro_listo;
+   
+   object_detection ob_det(.clk(clk_260mhz), 
+                            .dilate(process_selects[1]), 
+                            .erode(process_selects[0]), 
+                            .thresholds(process_selects[3:2]),
+                            .pixel_in(pixxel_in),
+                            .centroid_x(xx), 
+                            .centroid_y(yy), 
+                            .pixel_out(pixel_out));
+   
+
+
+   
+//   always_ff @ (posedge pixel_clk_in) begin
+//        if ((hcount_in >= (x_in) && hcount_in < (x_in+WIDTH)) &&
+//           (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
+//           if (processed) begin
+//                pixel_in <= {red_mapped, green_mapped, blue_mapped};
+//                pixel_out <= pixxel;
+//           end else if (original) begin
+//                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
+//           end 
+//        end else pixel_out <= 0;
+           
+   
+//   end
 endmodule
+
+////////BLOB////////
+module blob
+   #(parameter WIDTH = 64,            // default width: 64 pixels
+               HEIGHT = 64,           // default height: 64 pixels
+               COLOR = 12'hFFF)  // default color: white
+   (input pixel_clk_in,
+    input [10:0] hcount_in,
+    input [9:0] vcount_in,
+//    input original, //selection of original or processed image
+//    input processed,
+    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [11:0] pixel_out);
+   
+   logic clk_200mhz;
+   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
+   
+   logic [24:0] yy;//y-coordinate of center
+   logic [24:0] xx;//x-coordinate of the center
+   logic [23:0] pixel_in; //pixel that goes in to be binarized
+   logic [11:0] pixxel; //output from image processing
+   
+    
+   logic centro_listo; // the center is ready to be displayed
+   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+  
+  
+   // Jeana Code
+   
+//    parameter IDLE = 2'b01;
+//    parameter RENDER = 2'b10;
+//    logic [1:0] state = IDLE; 
+    
+//    always_ff @(posedge pixel_clk_in) begin
+//        case (state)
+//            IDLE: begin
+//                if(centro_listo)begin
+//                    state <= RENDER;
+//                end
+//            end
+//            RENDER: begin
+//                if ((hcount_in >= xx && hcount_in < (xx + WIDTH)) && 
+//                    (vcount_in >= yy && vcount_in < (yy + HEIGHT))) begin
+//                    pixel_out <= COLOR;
+//                end else begin
+//                    pixel_out <= 0;
+//                end
+//                state <= IDLE;
+//            end
+//        endcase      
+//    end   
+    
+   // Ryan Code
+   
+           
+
+   always_ff @(posedge pixel_clk_in) begin
+        if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
+           (vcount_in >= yy && vcount_in < (yy+HEIGHT)) && 
+            centro_listo) begin
+            pixel_out <= COLOR;
+        end else begin
+            pixel_out <= 0;
+        end
+          
+   end
+
+endmodule
+
+
+
+///////ENDBLOB///////
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -280,12 +520,6 @@ module debounce (input reset_in, clock_in, noisy_in,
 
    reg [19:0] count;
    reg new_input;
-
-//   always_ff @(posedge clock_in)
-//     if (reset_in) begin new <= noisy_in; clean_out <= noisy_in; count <= 0; end
-//     else if (noisy_in != new) begin new <= noisy_in; count <= 0; end
-//     else if (count == 650000) clean_out <= new;
-//     else count <= count+1;
 
    always_ff @(posedge clock_in)
      if (reset_in) begin 
@@ -457,4 +691,3 @@ module xvga(input vclock_in,
    end
    
 endmodule
-

@@ -1,24 +1,3 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 11/12/2019 10:11:04 PM
-// Design Name: 
-// Module Name: display
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 module xvga(input vclock_in,
             output reg [10:0] hcount_out,    // pixel number on current line
             output reg [9:0] vcount_out,     // line number
@@ -297,36 +276,6 @@ module blob
    object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
          .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
   
-  
-   // Jeana Code
-   
-//    parameter IDLE = 2'b01;
-//    parameter RENDER = 2'b10;
-//    logic [1:0] state = IDLE; 
-    
-//    always_ff @(posedge pixel_clk_in) begin
-//        case (state)
-//            IDLE: begin
-//                if(centro_listo)begin
-//                    state <= RENDER;
-//                end
-//            end
-//            RENDER: begin
-//                if ((hcount_in >= xx && hcount_in < (xx + WIDTH)) && 
-//                    (vcount_in >= yy && vcount_in < (yy + HEIGHT))) begin
-//                    pixel_out <= COLOR;
-//                end else begin
-//                    pixel_out <= 0;
-//                end
-//                state <= IDLE;
-//            end
-//        endcase      
-//    end   
-    
-   // Ryan Code
-   
-           
-
    always_ff @(posedge pixel_clk_in) begin
         if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
            (vcount_in >= yy && vcount_in < (yy+HEIGHT)) && 

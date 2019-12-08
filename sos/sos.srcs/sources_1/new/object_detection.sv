@@ -1,24 +1,3 @@
-`timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 11/06/2019 02:36:44 PM
-// Design Name: 
-// Module Name: object_detection
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
-
 module object_detection (input clk,
                          input dilate,
                          input erode, //switch operated mechanism that allows us to see either erosion or dilation---temporary testing input
@@ -52,7 +31,7 @@ module object_detection (input clk,
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .isValid(hugh_valid), .thresh_bit(thresh_out), .valid(thresh_valid));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .isValid(thresh_valid), .eroded_bit(erosion_out), .valid(erode_valid));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .isValid(erode_valid), .dilated_bit(dilation_out), .valid(dilate_valid));
-    localizer centroid(.clk(clk), .dil_bit(dilation_out), .isValid(dilate_valid), .x_center(centroid_x),
+    localizer centroid(.clk(clk), .dil_bit(erosion_out), .isValid(erode_valid), .x_center(centroid_x),
        .y_center(centroid_y), .center_ready(centre_pret));
     
     always_ff @(posedge clk) begin
@@ -253,8 +232,8 @@ module dilation(input clk,
                     xcounter <= 10'd0;
                     ycounter <= 10'd0;
                     xscan <= 10'd0;
-                    
-                    y_center <= 10'd100; //put the real stuff back later
+
+                    y_center <= y_record; //put the real stuff back later
                     x_center <= 10'd100;
                     center_ready <= 1;
                 end else if (xcounter == 10'd0 && ycounter == 10'd0) begin
