@@ -162,23 +162,28 @@ module display_select (
    assign phsync_out = hsync_in;
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
+   logic [23:0] pixel_to_process; //pixel that goes to ob det
+   logic [11:0] processed_pixel; // pixel that comes out
+   logic [11:0] centroid; //centroid blob
    
-   logic [11:0] centroid;
-   logic [11:0] mandm;
-   assign pixel_out = centroid + mandm;
-
+   assign pixel_out = centroid + processed_pixel;
+   
    picture_blob  dulcecito(.pixel_clk_in(vclock_in), .x_in(11'd0), .hcount_in(hcount_in),
-     .y_in(10'd0), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(mandm));
+     .y_in(10'd0), .vcount_in(vcount_in), .original(selectors[1]), .processed(selectors[0]), 
+     .process_selects(processing), .rom_pixel(pixel_to_process));
    
    //centroid details
-  // wire [11:0] centre_pixel; //show centroid
-//   logic [15:0] centroid_x;
-//   logic [15:0] centroid_y;
+   //wire [11:0] centre_pixel; //show centroid
+   logic [15:0] centroid_x;
+   logic [15:0] centroid_y;
    
    blob #(.WIDTH(16),.HEIGHT(16),.COLOR(12'hFF0))   // yellow!
      the_centroid(.pixel_clk_in(vclock_in),.hcount_in(hcount_in),.vcount_in(vcount_in), 
-     .original(selectors[1]), .processed(selectors[0]), .process_selects(processing), .pixel_out(centroid)); 
+     .x_centre(centroid_x), .y_centre(centroid_y), .pixel_out(centroid)); 
+    
 
+   object_detection ob_det(.clk(vclock_in), .dilate(processing[1]), .erode(processing[0]), .thresholds(processing[3:2]),
+         .pixel_in(pixel_to_process), .centroid_x(centroid_x), .centroid_y(centroid_y), .pixel_out(processed_pixel));
 endmodule
 
 module picture_blob
@@ -189,8 +194,8 @@ module picture_blob
     input [9:0] y_in,vcount_in,
     input original, //selection of original or processed image
     input processed,
-    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
-    output logic [11:0] pixel_out);
+    input [3:0] process_selects,// allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [23:0] rom_pixel);
 
    logic [15:0] image_addr;   // num of bits for 256*240 ROM
    logic [7:0] image_bits, red_mapped, green_mapped, blue_mapped;
@@ -216,13 +221,13 @@ module picture_blob
    logic [23:0] pixel_in; //pixel that goes in to be binarized
    logic [11:0] pixxel; //output from image processing
    
-
+   assign rom_pixel = pixel_in;
    logic clk_200mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
    
    //logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(pixel_clk_in), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
+//   object_detection ob_det(.clk(pixel_clk_in), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+  //       .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
   
 
    //logic centroid_trigger = 0;
@@ -234,13 +239,11 @@ module picture_blob
            (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
            if (processed) begin
                 pixel_in <= {red_mapped, green_mapped, blue_mapped};
- 
-                pixel_out <= pixxel;
            end else if (original) begin
-                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
+                pixel_in <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
            end
         end else begin
-            pixel_out <= 0;
+            pixel_in <= 0;
         end
    end
 endmodule
@@ -258,27 +261,19 @@ module blob
    (input pixel_clk_in,
     input [10:0] hcount_in,
     input [9:0] vcount_in,
-    input original, //selection of original or processed image
-    input processed,
-    input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    input [24:0] x_centre,
+    input [24:0] y_centre,
+    //input original, //selection of original or processed image
+    //input processed,
+    //input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
     output logic [11:0] pixel_out);
    
    logic clk_200mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
-   
-   logic [24:0] yy;//y-coordinate of center
-   logic [24:0] xx;//x-coordinate of the center
-   logic [23:0] pixel_in; //pixel that goes in to be binarized
-   logic [11:0] pixxel; //output from image processing
-   
-    
-   //logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(pixel_clk_in), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
-  
+     
    always_ff @(posedge pixel_clk_in) begin
-        if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
-           (vcount_in >= yy && vcount_in < (yy+HEIGHT))) begin
+        if ((hcount_in >= x_centre && hcount_in < (x_centre+WIDTH)) &&
+           (vcount_in >= y_centre && vcount_in < (y_centre+HEIGHT))) begin
             pixel_out <= COLOR;
         end else begin
             pixel_out <= 0;

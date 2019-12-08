@@ -33,7 +33,7 @@ module object_detection (input clk,
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .isValid(hugh_valid), .thresh_bit(thresh_out), .valid(thresh_valid));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .isValid(thresh_valid), .eroded_bit(erosion_out), .valid(erode_valid));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .isValid(erode_valid), .dilated_bit(dilation_out), .valid(dilate_valid));
-    localizer centroid(.clk(clk), .dil_bit(erosion_out), .isValid(erode_valid), .hcount(hcount), .vcount(vcount), .x_center(centroid_x),
+    localizer centroid(.clk(clk), .erode_bit(erosion_out), .isValid(erode_valid), .hcount(hcount), .vcount(vcount), .x_center(centroid_x),
        .y_center(centroid_y), .frame_blink(frame_over));
     
     always_ff @(posedge clk) begin
