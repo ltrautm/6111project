@@ -230,7 +230,7 @@ module dilation(input clk,
       logic [9:0] xcounter;
       logic [9:0] ycounter; 
       logic [9:0] xscan; //scans number of one bits in a row
-      logic [9:0] record_holder;
+      logic [9:0] record_holder; ///yvalue 
       logic [9:0] y_record;
       
       initial begin 
@@ -239,7 +239,7 @@ module dilation(input clk,
         xscan = 10'd0;
         record_holder = 10'd0;
         y_record = 10'd0;
-        center_ready <= 0;
+        center_ready = 0;
       end
        
       always_ff @(posedge clk) begin
@@ -247,24 +247,29 @@ module dilation(input clk,
                 if (xcounter == 10'd319 && ycounter == 10'd239) begin                    
                     if (xscan > record_holder) begin
                         y_record <= ycounter;
+                        record_holder <= xscan;
                     end
                     
                     xcounter <= 10'd0;
                     ycounter <= 10'd0;
+                    xscan <= 10'd0;
                     
-                end else if (xcounter == 10'd0 && ycounter == 10'd0) begin
-                    y_center <= y_record;
+                    y_center <= 10'd100; //put the real stuff back later
                     x_center <= 10'd100;
                     center_ready <= 1;
-                    
-                    y_record <= 10'd0;
+                end else if (xcounter == 10'd0 && ycounter == 10'd0) begin
+                    y_record <= 10'd0; // try changing this to 100--nvm
+                    record_holder <= 10'd0;
                     
                     if (dil_bit) begin
                         xscan <= xscan + 10'd1;
                     end 
+                    
+                    xcounter <= xcounter + 1;
                 end else if (xcounter == 10'd319) begin
                     if (xscan > record_holder) begin
                         y_record <= ycounter;
+                        record_holder <= xscan;
                     end
                     
                     xcounter <= 10'd0;
