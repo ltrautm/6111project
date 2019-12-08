@@ -460,7 +460,7 @@ module blob
     
    logic centro_listo; // the center is ready to be displayed
    object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
   
   
    // Jeana Code

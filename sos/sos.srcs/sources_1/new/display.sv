@@ -220,12 +220,12 @@ module picture_blob
    logic clk_200mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
    
-   logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+   //logic centro_listo; // the center is ready to be displayed
+   object_detection ob_det(.clk(pixel_clk_in), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
   
 
-   logic centroid_trigger = 0;
+   //logic centroid_trigger = 0;
     
    
              
@@ -272,14 +272,13 @@ module blob
    logic [11:0] pixxel; //output from image processing
    
     
-   logic centro_listo; // the center is ready to be displayed
-   object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+   //logic centro_listo; // the center is ready to be displayed
+   object_detection ob_det(.clk(pixel_clk_in), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel));
   
    always_ff @(posedge pixel_clk_in) begin
         if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
-           (vcount_in >= yy && vcount_in < (yy+HEIGHT)) && 
-            centro_listo) begin
+           (vcount_in >= yy && vcount_in < (yy+HEIGHT))) begin
             pixel_out <= COLOR;
         end else begin
             pixel_out <= 0;
