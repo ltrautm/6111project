@@ -3,7 +3,6 @@ module distance_calculation_tb;
     logic clk;
     logic rst;
     logic trigger;
-    logic[7:0] val;
     logic [15:0] x1;
     logic [15:0] y1;
     logic [15:0] x2;
