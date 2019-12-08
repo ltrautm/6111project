@@ -221,6 +221,7 @@ module picture_blob
    // calculate rom address and read the location
    assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
    m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
+//     square_image image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
 
    // use color map to create 4 bits R, 4 bits G, 4 bits B
    // since the image is greyscale, just replicate the red pixels
@@ -228,6 +229,7 @@ module picture_blob
    red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
    green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
    blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
+      //blk_mem_gen_0 square_map(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
    // note the one clock cycle delay in pixel!
    
    logic [15:0] yy;//y-coordinate of center
@@ -236,13 +238,12 @@ module picture_blob
    logic [11:0] pixxel; //output from image processing
    
 
-   
    logic clk_200mhz;
    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));
    
    logic centro_listo; // the center is ready to be displayed
    object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
   
 
    logic centroid_trigger = 0;
@@ -254,6 +255,7 @@ module picture_blob
            (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
            if (processed) begin
                 pixel_in <= {red_mapped, green_mapped, blue_mapped};
+ 
                 pixel_out <= pixxel;
            end else if (original) begin
                 pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
@@ -293,7 +295,7 @@ module blob
     
    logic centro_listo; // the center is ready to be displayed
    object_detection ob_det(.clk(clk_200mhz), .dilate(process_selects[1]), .erode(process_selects[0]), .thresholds(process_selects[3:2]),
-         .pixel_in(pixel_in), .hcount(hcount_in), .vcount(vcount_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
+         .pixel_in(pixel_in), .centroid_x(xx), .centroid_y(yy), .pixel_out(pixxel), .centre_pret(centro_listo));
   
   
    // Jeana Code
@@ -321,23 +323,19 @@ module blob
 //        endcase      
 //    end   
     
-   // Ryan Code      
-//   logic centroid_trigger = 0;
-   //logic [12:0] centroid_counter = 0;            
+   // Ryan Code
+   
+           
 
    always_ff @(posedge pixel_clk_in) begin
-//      if (centroid_counter == 13'd5120) begin
-//            centroid_counter <= 10'd0;
-//            centroid_trigger <= 0;
-//       if (centro_listo) begin
-//            centroid_trigger <= 1;
-      if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
-	 (vcount_in >= yy && vcount_in < (yy+HEIGHT))) begin
-	    pixel_out <= COLOR;
-      end else begin
-        pixel_out <= 0;
-      end
+        if ((hcount_in >= xx && hcount_in < (xx+WIDTH)) &&
+           (vcount_in >= yy && vcount_in < (yy+HEIGHT)) && 
+            centro_listo) begin
+            pixel_out <= COLOR;
+        end else begin
+            pixel_out <= 0;
+        end
+          
    end
-
 
 endmodule
