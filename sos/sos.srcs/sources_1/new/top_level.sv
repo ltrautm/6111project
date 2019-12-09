@@ -41,18 +41,18 @@ module top_level(
     wire [31:0] data;      //  instantiate 7-segment display; display (8) 4-bit hex
     wire [6:0] segments;
     assign {cg, cf, ce, cd, cc, cb, ca} = segments[6:0];
-    display_8hex display(.clk_in(clk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
+    display_8hex display(.clk_in(cbtnllk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
     //assign seg[6:0] = segments;
     assign  dp = 1'b1;  // turn off the period
 
     assign led = sw;                        // turn leds on
     assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
-    assign led16_r = btnl;                  // left button -> red led
-    assign led16_g = btnc;                  // center button -> green led
-    assign led16_b = btnr;                  // right button -> blue led
-    assign led17_r = btnl;
-    assign led17_g = btnc;
-    assign led17_b = btnr;
+//    assign led16_r = btnl;                  // left button -> red led
+//    assign led16_g = btnc;                  // center button -> green led
+//    assign led16_b = btnr;                  // right button -> blue led
+//    assign led17_r = btnl;
+//    assign led17_g = btnc;
+//    assign led17_b = btnr;
     
     
     ////Servo Controller//////
@@ -293,10 +293,26 @@ module top_level(
 
     assign vga_hs = ~hs;
     assign vga_vs = ~vs;
-
-    servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
     
-    fsm myfsm(.);
+    
+    /////////////////servo stuff///////////////////
+    //initialization for servo and fsm
+    
+    logic sdir;
+    logic sstop;
+
+    servo_wrapper myservo(.clk(clk_200mhz), 
+                          .servo_dir(sdir),
+                          .servo_stop(sstop),
+                          .js(jdfour));
+    
+    fsm myfsm(.clk(clk_65mhz),
+              .rst(btnu),
+              .btnleft(btnl),
+              .btnright(btnr),
+              .btncalc(btnd),
+              .servo_dir(sdir),
+              .servo_stop(sstop));
 
 endmodule
 
