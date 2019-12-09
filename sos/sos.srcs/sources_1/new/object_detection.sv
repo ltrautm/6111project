@@ -28,7 +28,7 @@ module object_detection (input clk,
     logic [7:0] val;
     
     rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[23:16]), .g(pixel[17:8]), .b(pixel[7:0]), .h(hue), .s(sat), .v(val));
-    hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .thresh_bit(thresh_out));
+    hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .val_val(val), .thresh_bit(thresh_out));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .eroded_bit(erosion_out));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .dilated_bit(dilation_out), .xcount(dilate_x), .ycount(dilate_y));
     
@@ -61,30 +61,31 @@ endmodule
 module hue_thresholding (input clk,
                          input [1:0] threshes,
                          input [7:0] hue_val,
+                         input [7:0] val_val,
                          output logic thresh_bit
                          );
      
       always_ff @(posedge clk) begin
             if (threshes == 2'b00) begin
-                if (hue_val > 8'd80 || hue_val < 8'd75) begin
+                if (hue_val > 8'd167 || hue_val < 8'd165) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
                 end
             end else if (threshes == 2'b01) begin
-                if (hue_val > 8'd85 || hue_val < 8'd80) begin
+                if ((hue_val > 8'd169 || hue_val < 8'd167)) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
                 end
             end else if (threshes == 2'b10) begin
-                if (hue_val > 8'd90 || hue_val < 8'd85) begin
+                if (hue_val > 8'd172 || hue_val < 8'd169) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
                 end
             end else if (threshes == 2'b11) begin
-                if (hue_val > 8'd95 || hue_val < 8'd90) begin
+                if (hue_val > 8'd172 || hue_val < 8'd165) begin
                     thresh_bit <= 0;
                 end else begin
                     thresh_bit <= 1;
