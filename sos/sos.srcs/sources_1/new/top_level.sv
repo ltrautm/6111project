@@ -295,6 +295,8 @@ module top_level(
     assign vga_vs = ~vs;
 
     servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
+    
+    fsm myfsm(.);
 
 endmodule
 
