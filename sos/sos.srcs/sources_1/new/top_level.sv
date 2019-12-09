@@ -40,20 +40,20 @@ module top_level(
 
     wire [31:0] data;      //  instantiate 7-segment display; display (8) 4-bit hex
     wire [6:0] segments;
-    assign {cg, cf, ce, cd, cc, cb, ca} = segments[6:0];
-    display_8hex display(.clk_in(clk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
+
     //assign seg[6:0] = segments;
     assign  dp = 1'b1;  // turn off the period
 
     assign led = sw;                        // turn leds on
     assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
     assign led16_r = btnl;                  // left button -> red led
-    assign led16_g = btnc;                  // center button -> green led
+//    assign led16_g = btnc;                  // center button -> green led
     assign led16_b = btnr;                  // right button -> blue led
     assign led17_r = btnl;
     assign led17_g = btnc;
     assign led17_b = btnr;
     
+
     
     ////Servo Controller//////
 //    logic clkk_100mhz;
@@ -94,6 +94,39 @@ module top_level(
     // btnc button is user reset
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
+   
+   logic [63:0] distance;
+    
+    distance my_dist(
+        .clk_in(clk_65mhz),
+        .rst_in(reset),
+    //    .start(),
+        .x1(32'd253),
+        .y1(32'd131),
+        .x2(32'd53),
+        .y2(32'd113),
+    //    .servo_angle(),
+        .distance(distance)
+    );
+    
+    assign {cg, cf, ce, cd, cc, cb, ca} = segments[6:0];
+//    display_8hex display(.clk_in(clk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
+    
+    logic bitwise_distance;
+    assign bitwise_distance = &distance;
+    assign led16_g = bitwise_distance;
+    
+    
+//    logic [15:0] centroid_x;
+//    logic [31:0] selector;
+//    assign selector = {16'd0, centroid_x};
+//    seven_seg_controller my_controller(
+//        .clk_in(clk_65mhz),.rst_in(reset),
+//        .val_in(selector),
+//        .cat_out({cg, cf, ce, cd, cc, cb, ca}),
+//        .an_out(an)
+//    );
+   
    
    ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
     
