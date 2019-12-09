@@ -5,9 +5,13 @@ module object_detection (input clk,
                          input [23:0] pixel_in, //pixel that goes in 
                          input [10:0] hcount,
                          input [9:0] vcount,
+                         input inBounds,
                          output logic [15:0] centroid_x,
                          output logic [15:0] centroid_y,
-                         output logic [11:0] pixel_out
+                         output logic [11:0] pixel_out,
+                         output logic [24:0] x_acc,
+                         output logic [24:0] y_acc,
+                         output logic [24:0] bit_count
                          );
 
     logic [23:0] pixel; //pixel that goes in module
@@ -28,14 +32,17 @@ module object_detection (input clk,
     
     //for localizer
     logic frame_over;
+    logic [15:0] averaging;
     
     rgb2hsv convert(.clock(clk), .reset(0), .r(pixel[23:16]), .g(pixel[15:8]), .b(pixel[7:0]), .h(hue), .s(sat), .v(val), .hue_valid(hugh_valid));
     hue_thresholding thresh(.clk(clk), .threshes(thresholds), .hue_val(hue), .isValid(hugh_valid), .thresh_bit(thresh_out), .valid(thresh_valid));
     erosion eroding(.clk(clk), .bit_in(thresh_out), .isValid(thresh_valid), .eroded_bit(erosion_out), .valid(erode_valid));
     dilation dilating(.clk(clk), .bit_in(erosion_out), .isValid(erode_valid), .dilated_bit(dilation_out), .valid(dilate_valid));
-    localizer centroid(.clk(clk), .erode_bit(erosion_out), .isValid(erode_valid), .hcount(hcount), .vcount(vcount), .x_center(centroid_x),
-       .y_center(centroid_y), .frame_blink(frame_over));
-    
+    localizer centroid(.clk(clk), .erode_bit(erosion_out), .isValid(erode_valid), .hcount(hcount), .vcount(vcount), .inBounds(inBounds), .x_center(centroid_x),
+       .y_center(centroid_y), .frame_blink(frame_over), .x_accumulator(x_acc), .y_accumulator(y_acc), .bit_count(bit_count));
+//    centroid busqueda(.clock(clk), .reset(0), .x(hcount), .y(vcount), .green(erosion_out), 
+//        .centroid_x(centroid_x[10:0]), .centroid_y(centroid_y[9:0]), .frame_done(frame_over), .averaging(averaging));
+        
     always_ff @(posedge clk) begin
         pixel <= pixel_in;
         if (hcount == 11'd319 &&  vcount == 10'd239) frame_over <= 1;
@@ -99,8 +106,8 @@ module hue_thresholding (input clk,
                     valid <= 1;
                 end
             end
-            end
-      end
+            end else valid <= 0;
+      end 
 endmodule        
 
 module erosion(input clk,
@@ -206,54 +213,99 @@ module dilation(input clk,
                    input frame_blink,
                    input [10:0] hcount,
                    input [9:0] vcount,
+                   input inBounds,
                    output logic [15:0] x_center,
-                   output logic [15:0] y_center
+                   output logic [15:0] y_center,
+                   output logic [24:0] x_accumulator,
+                   output logic [24:0] y_accumulator,
+                   output logic [24:0] bit_count
                    );
                                 
-    logic [24:0] x_accumulator; // accumulates all values of x
-    logic [24:0] y_accumulator; //and y
-    logic [24:0] bit_count; // counts number of bits that enter the stream
+    //logic [24:0] x_accumulator; // accumulates all values of x
+    //logic [24:0] y_accumulator; //and y
+    //logic [24:0] bit_count; // counts number of bits that enter the stream
     //logic [4:0] bit_shift;
-    logic div_start;
-    logic a_frame_passed;
+    //logic div_start; //tells the divider to start dividing
+    logic a_frame_passed; //true the cycle after frame_blink?
     
     //for division
 //    logic [24:0] y_total;
 //    logic [24:0] x_total;
     
+    logic [63:0] x_center_BIG;
+    logic [63:0] y_center_BIG;
+    logic add_break;
+    logic [9:0] break_counter;
+//    assign x_center = x_center_BIG[47:32];
+//    assign y_center = y_center_BIG[47:32];
+    
     initial begin
-        x_center = 25'd0;
-        y_center = 25'd0;
-        x_accumulator = 25'd0;
-        y_accumulator = 25'd0;
+        add_break = 0;
+        break_counter = 0;
+        x_center_BIG = 64'h1111_0011_1111_1111;
+        y_center_BIG = 64'd100;
+        x_accumulator = 25'd100;
+        y_accumulator = 25'd100;
         bit_count = 25'd0;
-        div_start = 0;
+        //div_start = 0;
         a_frame_passed = 0;
     end
-    divider #(.WIDTH(25)) ydivide(.clk(clk), .start(div_start), .dividend(y_accumulator), 
-    .divider(bit_count), .quotient(y_center));
+    
+//    divider #(.WIDTH(25)) ydivide(.clk(clk), .start(div_start), .dividend(y_accumulator), 
+//    .divider(bit_count), .quotient(y_center));
 
-    divider #(.WIDTH(25)) xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), 
-    .divider(bit_count), .quotient(x_center));
+//    divider #(.WIDTH(25)) xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), 
+//    .divider(bit_count), .quotient(x_center));
+    logic xcenter_valid;
+    logic ycenter_valid;
+    logic [24:0] x_feed;
+    logic [24:0] y_feed;
+
+    
+    divvy_itup xcenter (.aclk(clk),
+                        .s_axis_divisor_tdata({7'b0000_000, bit_count}),
+                        .s_axis_divisor_tvalid(a_frame_passed),
+                        .s_axis_dividend_tdata({7'b0000_000, x_feed}),
+                        .s_axis_dividend_tvalid(a_frame_passed),
+                        .m_axis_dout_tdata({x_center_BIG}),
+                        .m_axis_dout_tvalid(xcenter_valid));
+                        
+    divvy_itup ycenter (.aclk(clk),
+                    .s_axis_divisor_tdata({7'b0000_000, bit_count}),
+                    .s_axis_divisor_tvalid(a_frame_passed),
+                    .s_axis_dividend_tdata({7'b0000_000, y_feed}),
+                    .s_axis_dividend_tvalid(a_frame_passed),
+                    .m_axis_dout_tdata({y_center_BIG}),
+                    .m_axis_dout_tvalid(ycenter_valid));
+   
     
     always_ff @(posedge clk) begin
+        if (xcenter_valid) x_center <= x_center_BIG[47:32];
+        if (ycenter_valid) y_center <= y_center_BIG[47:32];
         if (frame_blink) begin //start centroid calculation
+            x_feed <= x_accumulator;
+            y_feed <= y_accumulator;
             a_frame_passed <= 1;
-            div_start <= 1;
+            //add_break <= 1;
+            //div_start <= 1;
         end else if (!frame_blink && a_frame_passed) begin
+            bit_count <= 0;
+            //div_start <= 0;
+            a_frame_passed <= 0;
             y_accumulator <= 25'd0;
             x_accumulator <= 25'd0;
-            bit_count <= 0;
-            div_start <= 0;
-            a_frame_passed <= 0;
-        end else if (erode_bit && isValid) begin
+        end else if (inBounds && !add_break && erode_bit) begin
             y_accumulator <= y_accumulator + vcount;
             x_accumulator <= x_accumulator + hcount;
-            bit_count <= bit_count + 1; 
+//            if (break_counter == 10'd100) begin
+//                add_break <= 1;
+//              end  
+            bit_count <= bit_count + 25'd1; 
         end
     end
 endmodule
 
+//inBounds && erode_bit && isValid
   
 
 //////////////////////////////////////////////////////////////////////////////////
