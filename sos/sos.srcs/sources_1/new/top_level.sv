@@ -94,38 +94,55 @@ module top_level(
     // btnc button is user reset
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
-   
-   logic [63:0] distance;
-    
-    distance my_dist(
-        .clk_in(clk_65mhz),
-        .rst_in(reset),
-    //    .start(),
-        .x1(32'd253),
-        .y1(32'd131),
-        .x2(32'd53),
-        .y2(32'd113),
-    //    .servo_angle(),
-        .distance(distance)
-    );
-    
-    assign {cg, cf, ce, cd, cc, cb, ca} = segments[6:0];
+
+
 //    display_8hex display(.clk_in(clk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
     
-    logic bitwise_distance;
-    assign bitwise_distance = &distance;
-    assign led16_g = bitwise_distance;
+//    logic bitwise_distance;
+//    assign bitwise_distance = &distance;
+//    assign led16_g = bitwise_distance;
     
+//    logic signed [31:0] x1;
+//    logic signed [31:0] y1;
+//    logic signed [31:0] x2;
+//    logic signed [31:0] y2;
+//    logic [9:0] servo_angle;
+    logic signed [31:0] distance;
+    logic signed [31:0] world_x;
+    logic signed [31:0] world_y;
+    logic signed [31:0] world_z;
+
+//    assign x1 = {16'd253, 16'd0};
+//    assign y1 = {16'd131, 16'd0};
+        
+//    assign x2 = {16'd53, 16'd0};
+//    assign y2 = {16'd113, 16'd0};
     
-//    logic [15:0] centroid_x;
-//    logic [31:0] selector;
-//    assign selector = {16'd0, centroid_x};
-//    seven_seg_controller my_controller(
-//        .clk_in(clk_65mhz),.rst_in(reset),
-//        .val_in(selector),
-//        .cat_out({cg, cf, ce, cd, cc, cb, ca}),
-//        .an_out(an)
-//    );
+    distance my_distance(
+        // inputs
+        .clk_in(clk_65mhz),
+        .rst_in(reset),
+//        .start(trigger),
+        .x1(25'd253),
+        .y1(25'd131),
+        .x2(25'd53),
+        .y2(25'd113),
+//        .servo_angle(servo_angle),
+        // outputs
+        .distance(distance),
+        .world_x(world_x),
+        .world_y(world_y),
+        .world_z(world_z)
+        );
+    logic [31:0] selector;
+    assign selector = {1'b0, distance[30:16], 16'b0};
+
+    seven_seg_controller my_controller(
+        .clk_in(clk_65mhz),.rst_in(reset),
+        .val_in(selector),
+        .cat_out({cg, cf, ce, cd, cc, cb, ca}),
+        .an_out(an)
+    );
    
    
    ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        

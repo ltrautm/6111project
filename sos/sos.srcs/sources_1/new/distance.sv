@@ -2,16 +2,29 @@ module distance(
     input clk_in,
     input rst_in,
 //    input start,
-    input signed [31:0] x1,
-    input signed [31:0] y1,
-    input signed [31:0] x2,
-    input signed [31:0] y2,
+//    input signed [31:0] x1, // make these 25 bits
+//    input signed [31:0] y1,
+//    input signed [31:0] x2,
+//    input signed [31:0] y2,
+    input [24:0] x1, // make these 25 bits
+    input [24:0] y1,
+    input [24:0] x2,
+    input [24:0] y2,
 //    input [9:0] servo_angle,
     output logic signed [31:0] distance,
     output logic signed [31:0] world_x,
     output logic signed [31:0] world_y,
     output logic signed [31:0] world_z
     );
+    
+    logic signed [31:0] converted_x1;
+    logic signed [31:0] converted_y1;
+    logic signed [31:0] converted_x2;
+    logic signed [31:0] converted_y2;
+    assign converted_x1 = {x1[15:0], 16'b0};
+    assign converted_y1 = {y1[15:0], 16'b0};
+    assign converted_x2 = {x2[15:0], 16'b0};
+    assign converted_y2 = {y2[15:0], 16'b0};
     
     // 16 bits to decimal: 2^16 = 65536
     
@@ -51,7 +64,7 @@ module distance(
     parameter signed C2_1 = {1'b0, 15'b11000, 16'b0};//32'd24;
     parameter signed C2_2 = {1'b0, 15'b10111001, 16'b0};
     parameter signed C2_3 = {1'b1, 15'b111011111011100, 16'b1111_1111_1111_1111};//-32'd2083;
-    
+
 
     
 // STAGE 1
@@ -269,6 +282,15 @@ module distance(
     logic signed [63:0] world_x_sq_temp;
     logic signed [63:0] world_y_sq_temp;
     logic signed [63:0] world_z_sq_temp;
+    
+//    my_division worldz(
+//        .clk_in(clk_in),
+//        .dividend(world_z_numerator),
+//        .divisor({1'b0, 13'b0, 1'b1,17'b0} ),
+//       .valid_signal(1),
+//        .quotient(world_z)
+//        );
+    
 //////////////////////////////////////////////////////////////////////    
 // FINAL STAGE:
     logic [63:0] squared_distance;
@@ -325,29 +347,29 @@ module distance(
        
     always_ff @(posedge clk_in)begin    
         // STAGE 1 [x y 1 ]* P_inv to get world coord X, Y (scale by third value)
-        s1_world1_x1_temp <= x1*P1_inv11;
-        s1_world1_x2_temp <= y1*P1_inv21;
+        s1_world1_x1_temp <= converted_x1*P1_inv11;
+        s1_world1_x2_temp <= converted_y1*P1_inv21;
         s1_world1_x3 <= P1_inv31;
         
-        s1_world1_y1_temp <= x1*P1_inv12;
-        s1_world1_y2_temp <= y1*P1_inv22;
+        s1_world1_y1_temp <= converted_x1*P1_inv12;
+        s1_world1_y2_temp <= converted_y1*P1_inv22;
         s1_world1_y3 <= P1_inv32;
         
-        s1_scaling_1_temp <= x1*P1_inv13;
-        s1_scaling_2_temp <= y1*P1_inv23;
+        s1_scaling_1_temp <= converted_x1*P1_inv13;
+        s1_scaling_2_temp <= converted_y1*P1_inv23;
         s1_scaling_3 <= P1_inv33;
         
         
-        s2_world1_x1_temp <= x2*P2_inv11;
-        s2_world1_x2_temp <= y2*P2_inv21;
+        s2_world1_x1_temp <= converted_x2*P2_inv11;
+        s2_world1_x2_temp <= converted_y2*P2_inv21;
         s2_world1_x3 <= P2_inv31;
         
-        s2_world1_y1_temp <= x2*P2_inv12;
-        s2_world1_y2_temp <= y2*P2_inv22;
+        s2_world1_y1_temp <= converted_x2*P2_inv12;
+        s2_world1_y2_temp <= converted_y2*P2_inv22;
         s2_world1_y3 <= P2_inv32;
         
-        s2_scaling_1_temp <= x2*P2_inv13;
-        s2_scaling_2_temp <= y2*P2_inv23;
+        s2_scaling_1_temp <= converted_x2*P2_inv13;
+        s2_scaling_2_temp <= converted_y2*P2_inv23;
         s2_scaling_3 <= P2_inv33;
         
         
@@ -464,7 +486,7 @@ module distance(
         // STAGE 11: divide world_x, world_y, and world_z by 2
         world_x <= world_x_numerator >> 1;
         world_y <= world_y_numerator >> 1;
-        world_z <= world_z_numerator >> 1;
+        world_z <= -(~({1'b1, world_z_numerator} >> 1)); // use divider
         
         
         // STAGE 12

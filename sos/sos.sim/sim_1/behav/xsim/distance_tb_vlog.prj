@@ -1,0 +1,22 @@
+# compile verilog/system verilog design source files
+verilog xil_defaultlib  \
+"../../../../sos.srcs/sources_1/ip/blk_mem_gen_1_2/sim/blk_mem_gen_1.v" \
+"../../../../sos.srcs/sources_1/ip/blk_mem_gen_0_1/sim/blk_mem_gen_0.v" \
+"../../../../sos.srcs/sources_1/imports/Downloads/clk_wiz_lab3.v" \
+
+sv xil_defaultlib  \
+"../../../../sos.srcs/sources_1/imports/camera/camera_read.sv" \
+"../../../../sos.srcs/sources_1/new/camera_wrapper.sv" \
+"../../../../sos.srcs/sources_1/new/distance.sv" \
+"../../../../sos.srcs/sources_1/new/object_detection.sv" \
+"../../../../sos.srcs/sources_1/new/servo_wrapper.sv" \
+"../../../../sos.srcs/sources_1/new/top_level.sv" \
+"../../../../sos.srcs/sources_1/new/servo.sv" \
+"../../../../sos.srcs/sim_1/new/distance_tb.sv" \
+"../../../../sos.srcs/sim_1/new/division_tb.sv" \
+
+# compile glbl module
+verilog xil_defaultlib "glbl.v"
+
+# Do not sort compile order
+nosort

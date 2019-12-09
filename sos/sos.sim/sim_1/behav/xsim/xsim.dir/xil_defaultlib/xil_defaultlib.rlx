@@ -1,0 +1,27 @@
+0.6
+2019.1
+Aug  9 2019
+16:44:31
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.sim/sim_1/behav/xsim/glbl.v,1558713910,verilog,,,,glbl,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sim_1/new/distance_tb.sv,1575867373,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sim_1/new/division_tb.sv,,distance_tb,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sim_1/new/division_tb.sv,1575865938,systemVerilog,,,,divsion_tb,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/imports/Downloads/clk_wiz_lab3.v,1573683517,verilog,,,,clk_wiz_lab3,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/imports/camera/camera_read.sv,1573683517,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/camera_wrapper.sv,,camera_read,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_0_1/sim/blk_mem_gen_0.v,1574736718,verilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/imports/Downloads/clk_wiz_lab3.v,,blk_mem_gen_0,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_1_2/sim/blk_mem_gen_1.v,1574736719,verilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/blk_mem_gen_0_1/sim/blk_mem_gen_0.v,,blk_mem_gen_1,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/division_1/demo_tb/tb_division.vhd,1575918383,vhdl,,,,tb_division,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/division_1/sim/division.vhd,1575918383,vhdl,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/division_1/demo_tb/tb_division.vhd,,,division,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_0_2/demo_tb/tb_floating_point_0.vhd,1575918303,vhdl,,,,tb_floating_point_0,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_0_2/sim/floating_point_0.vhd,1575918303,vhdl,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_0_2/demo_tb/tb_floating_point_0.vhd,,,floating_point_0,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_1_1/demo_tb/tb_floating_point_1.vhd,1575918584,vhdl,,,,tb_floating_point_1,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_1_1/sim/floating_point_1.vhd,1575920112,vhdl,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/floating_point_1_1/demo_tb/tb_floating_point_1.vhd,,,floating_point_1,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/sqrt_conversion_1/demo_tb/tb_sqrt_conversion.vhd,1575918514,vhdl,,,,tb_sqrt_conversion,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/sqrt_conversion_1/sim/sqrt_conversion.vhd,1575918513,vhdl,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/sqrt_conversion_1/demo_tb/tb_sqrt_conversion.vhd,,,sqrt_conversion,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/square_root_1/demo_tb/tb_square_root.vhd,1575918645,vhdl,,,,tb_square_root,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/square_root_1/sim/square_root.vhd,1575918645,vhdl,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/ip/square_root_1/demo_tb/tb_square_root.vhd,,,square_root,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/camera_wrapper.sv,1574736956,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/distance.sv,,camera_wrapper,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/distance.sv,1575920216,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/object_detection.sv,,distance;get_divisor;my_division;my_sqrt,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/object_detection.sv,1575853920,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/servo_wrapper.sv,,dilation;divider;erosion;hue_thresholding;object_detection;rgb2hsv,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/servo.sv,1573683520,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sim_1/new/distance_tb.sv,,servo,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/servo_wrapper.sv,1575853920,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/top_level.sv,,servo_wrapper,,,,,,,,
+/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/top_level.sv,1575889541,systemVerilog,,/afs/athena.mit.edu/user/j/e/jeana/6111project/sos/sos.srcs/sources_1/new/servo.sv,,debounce;display_8hex;display_select;picture_blob;top_level;xvga,,,,,,,,

@@ -1,0 +1,15 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../sos.srcs/sources_1/ip/sqrt_conversion_1/sim/sqrt_conversion.vhd" \
+"../../../../sos.srcs/sources_1/ip/sqrt_conversion_1/demo_tb/tb_sqrt_conversion.vhd" \
+"../../../../sos.srcs/sources_1/ip/floating_point_0_2/sim/floating_point_0.vhd" \
+"../../../../sos.srcs/sources_1/ip/floating_point_0_2/demo_tb/tb_floating_point_0.vhd" \
+"../../../../sos.srcs/sources_1/ip/division_1/sim/division.vhd" \
+"../../../../sos.srcs/sources_1/ip/division_1/demo_tb/tb_division.vhd" \
+"../../../../sos.srcs/sources_1/ip/floating_point_1_1/sim/floating_point_1.vhd" \
+"../../../../sos.srcs/sources_1/ip/floating_point_1_1/demo_tb/tb_floating_point_1.vhd" \
+"../../../../sos.srcs/sources_1/ip/square_root_1/sim/square_root.vhd" \
+"../../../../sos.srcs/sources_1/ip/square_root_1/demo_tb/tb_square_root.vhd" \
+
+# Do not sort compile order
+nosort
