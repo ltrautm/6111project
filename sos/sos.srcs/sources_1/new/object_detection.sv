@@ -251,16 +251,11 @@ module dilation(input clk,
         a_frame_passed = 0;
     end
     
-//    divider #(.WIDTH(25)) ydivide(.clk(clk), .start(div_start), .dividend(y_accumulator), 
-//    .divider(bit_count), .quotient(y_center));
 
-//    divider #(.WIDTH(25)) xdivide(.clk(clk), .start(div_start), .dividend(x_accumulator), 
-//    .divider(bit_count), .quotient(x_center));
     logic xcenter_valid;
     logic ycenter_valid;
     logic [24:0] x_feed;
     logic [24:0] y_feed;
-
     
     divvy_itup xcenter (.aclk(clk),
                         .s_axis_divisor_tdata({7'b0000_000, bit_count}),
@@ -280,8 +275,8 @@ module dilation(input clk,
    
     
     always_ff @(posedge clk) begin
-        if (xcenter_valid) x_center <= x_center_BIG[47:32];
-        if (ycenter_valid) y_center <= y_center_BIG[47:32];
+        if (ycenter_valid) y_center <= y_center_BIG [47:32];
+        if (ycenter_valid) x_center <= x_center_BIG [47:32];  
         if (frame_blink) begin //start centroid calculation
             x_feed <= x_accumulator;
             y_feed <= y_accumulator;
@@ -301,7 +296,8 @@ module dilation(input clk,
 //                add_break <= 1;
 //              end  
             bit_count <= bit_count + 25'd1; 
-        end
+        end 
+        
     end
 endmodule
 
