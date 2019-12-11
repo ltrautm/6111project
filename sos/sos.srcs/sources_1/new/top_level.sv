@@ -1,15 +1,7 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-//
-// Updated 8/10/2019 Lab 3
-// Updated 8/12/2018 V2.lab5c
-// Create Date: 10/1/2015 V1.0
-// Design Name:
-// Module Name: labkit
-//
-//////////////////////////////////////////////////////////////////////////////////
 
 module top_level(
+
    input clk_100mhz,
    input[15:0] sw,
    input btnc, btnu, btnl, btnr, btnd,
@@ -31,61 +23,38 @@ module top_level(
    output ca, cb, cc, cd, ce, cf, cg, dp,  // segments a-g, dp
    output[7:0] an    // Display location 0-7
    );
+
     logic clk_65mhz;
+
     // create 65mhz system clock, happens to match 1024 x 768 XVGA timing
+
     clk_wiz_lab3 clkdivider(.clk_in1(clk_100mhz), .clk_out1(clk_65mhz));
-    
-//    logic clk_50mhz;
-//    clk_wiz_1 clk50(.clk_in1(clk_100mhz), .clk_out1(clk_50mhz));
 
-    wire [31:0] data;      //  instantiate 7-segment display; display (8) 4-bit hex
-    wire [6:0] segments;
+    logic [31:0] selector;
+    logic [24:0] center_x;
+    logic [24:0] center_x2;
+    logic [24:0] center_x3;
+    logic [24:0] center_y;
+    logic [24:0] center_y2;
+    logic [24:0] center_y3;
+    logic [24:0] x_acc;
+    logic [24:0] x_acc2;
+    logic [24:0] x_acc3;
+    logic [24:0] y_acc;
+    logic [24:0] y_acc2;
+    logic [24:0] y_acc3;
+    logic [24:0] bit_count;
+    logic [24:0] bit_count2;
+    logic [24:0] bit_count3;
 
-    //assign seg[6:0] = segments;
-    assign  dp = 1'b1;  // turn off the period
 
-    assign led = sw;                        // turn leds on
-    assign data = {28'h0123456, sw[3:0]};   // display 0123456 + sw[3:0]
-    assign led16_r = btnl;                  // left button -> red led
-//    assign led16_g = btnc;                  // center button -> green led
-    assign led16_b = btnr;                  // right button -> blue led
-    assign led17_r = btnl;
-    assign led17_g = btnc;
-    assign led17_b = btnr;
-    
-
-    
-    ////Servo Controller//////
-//    logic clkk_100mhz;
-//    assign clkk_100mhz = clk_100mhz;
-
-    //make a 50mhz clock
-//    logic clk_50mhz = 1'b0;
-    
-//    logic county = 1'b0;
-//    always_ff @(posedge clk_100mhz) begin
-//        if (county == 1'b1) begin
-//            county <= 1'b0;
-//            clk_50mhz <= 1'b0;
-//        end else begin
-//            county <= 1'b1;
-//            clk_50mhz <= 1'b1; 
-//        end
-    
-//    end
-
-    //try to use the 65 or 200 mhz clocks to generate a 50mhz clock
-//    servo_wrapper myservo(.clk(clk_260mhz), .js(jd4));
-    
-    
-    
     /////Display Initialization//////
-
     wire [10:0] hcount;    // pixel on current line
     wire [9:0] vcount;     // line number
     wire hsync, vsync, blank;
     wire [11:0] pixel;
     wire [11:0] pixel2;
+    wire [11:0] pixel3;
     reg [11:0] rgb;    
     xvga xvga1(.vclock_in(clk_65mhz),.hcount_out(hcount),.vcount_out(vcount),
           .hsync_out(hsync),.vsync_out(vsync),.blank_out(blank));
@@ -94,39 +63,68 @@ module top_level(
     // btnc button is user reset
     wire reset;
     debounce db1(.reset_in(reset),.clock_in(clk_65mhz),.noisy_in(btnc),.clean_out(reset));
-
-
-//    display_8hex display(.clk_in(clk_65mhz),.data_in(data), .seg_out(segments), .strobe_out(an));
-    
-//    logic bitwise_distance;
-//    assign bitwise_distance = &distance;
-//    assign led16_g = bitwise_distance;
-    
-//    logic signed [31:0] x1;
-//    logic signed [31:0] y1;
-//    logic signed [31:0] x2;
-//    logic signed [31:0] y2;
-//    logic [9:0] servo_angle;
+ 
+//////////////// DISTANCE /////////////////////////////////
     logic signed [31:0] distance;
     logic signed [31:0] world_x;
     logic signed [31:0] world_y;
     logic signed [31:0] world_z;
+    logic [4:0] jitter_counter = 5'd0;
+    logic [28:0] jitter_accumulator_x1 = 29'd0;
+    logic [28:0] jitter_accumulator_y1 = 29'd0;
+    logic [28:0] jitter_accumulator_x2 = 29'd0;
+    logic [28:0] jitter_accumulator_y2 = 29'd0;
+    
 
-//    assign x1 = {16'd253, 16'd0};
-//    assign y1 = {16'd131, 16'd0};
-        
-//    assign x2 = {16'd53, 16'd0};
-//    assign y2 = {16'd113, 16'd0};
+    logic [24:0] nice_centroid_x1;
+    logic [24:0] nice_centroid_y1;
+    logic [24:0] nice_centroid_x2;
+    logic [24:0] nice_centroid_y2;
+    
+    always_ff@(posedge clk_65mhz)begin
+        if(jitter_counter == 15)begin
+            nice_centroid_x1 <= jitter_accumulator_x1 >> 4;
+            nice_centroid_y1 <= jitter_accumulator_y1 >> 4;
+            
+            nice_centroid_x2 <= jitter_accumulator_x2 >> 4;
+            nice_centroid_y2 <= jitter_accumulator_y2 >> 4;
+            
+            jitter_counter <= 0;
+            
+            jitter_accumulator_x1 <= 0;
+            jitter_accumulator_y1 <= 0;
+            jitter_accumulator_x2 <= 0;
+            jitter_accumulator_y2 <= 0;
+        end else begin
+
+            jitter_counter <= jitter_counter + 1;
+            
+            jitter_accumulator_x1 <= jitter_accumulator_x1 + center_x;
+            jitter_accumulator_y1 <= jitter_accumulator_y1 + center_y;
+            
+            jitter_accumulator_x2 <= jitter_accumulator_x2 + center_x2;
+            jitter_accumulator_y2 <= jitter_accumulator_y2 + center_y2;
+
+        end
+    end
+    
+//    logic [15:0] filtered_distance;
+//    always_ff@(posedge clk_65mhz)begin
+//        if(distance[31:16] < 16'hB00)begin
+//            filtered_distance <= distance[31:16];
+//        end
+//    end
+    
     
     distance my_distance(
         // inputs
         .clk_in(clk_65mhz),
         .rst_in(reset),
 //        .start(trigger),
-        .x1(25'd253),
-        .y1(25'd131),
-        .x2(25'd53),
-        .y2(25'd113),
+        .x1(nice_centroid_x1),
+        .y1(nice_centroid_y1),
+        .x2(nice_centroid_x2),
+        .y2(nice_centroid_y2),
 //        .servo_angle(servo_angle),
         // outputs
         .distance(distance),
@@ -134,19 +132,28 @@ module top_level(
         .world_y(world_y),
         .world_z(world_z)
         );
-    logic [31:0] selector;
-    assign selector = {1'b0, distance[30:16], 16'b0};
+    logic [31:0] selected;
+//    assign selected = {distance[31:16], 16'b0}; // change this later
+    assign selected = {nice_centroid_x1[7:0], nice_centroid_y1[7:0], nice_centroid_x2[7:0], nice_centroid_y2[7:0]};
+//    logic [31:0] sel_set;
+//    logic [26:0] counter_boi = 27'b0;
+//    always_ff @(posedge clk_65mhz) begin
+//        if (counter_boi == 27'd100000000) begin
+//            sel_set <= selected;
+//            counter_boi <= 27'b0;
+//        end else counter_boi <= counter_boi + 27'd1;
+    
+//    end
 
     seven_seg_controller my_controller(
         .clk_in(clk_65mhz),.rst_in(reset),
-        .val_in(selector),
+        .val_in(selected),
         .cat_out({cg, cf, ce, cd, cc, cb, ca}),
         .an_out(an)
     );
-   
-   
-   ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
     
+   ////////////////////////////////////////////CAMERA_1////////////////////////////////////////////                        
+
     logic [11:0] cam1;
     logic pclk_in;
     logic [11:0] frame_buff_out;
@@ -159,10 +166,11 @@ module top_level(
     logic she_valid;
     assign she_valid = valid_pixel & ~sw[7];
     
+
     logic [16:0] pixel_addr_in;
-    logic [16:0] pixel_addr_out;
+    logic [16:0] pixel_addr_out;    
     
-    
+
     blk_mem_gen_0 jojos_bram(.addra(pixel_addr_in), //take a pic based on switch and  
                              .clka(pclk_in),
                              .dina(processed_pixels),
@@ -177,8 +185,8 @@ module top_level(
         end else if (valid_pixel)begin
             pixel_addr_in <= pixel_addr_in +1;  
         end
-    end
-    
+    end    
+
     always_ff @(posedge clk_65mhz) begin
         old_output_pixels <= output_pixels;
         processed_pixels = {output_pixels[15:12],output_pixels[10:7],output_pixels[4:1]};            
@@ -188,7 +196,7 @@ module top_level(
 //    assign cam1 = ((hcount<320) &&  (vcount<240))?frame_buff_out:12'h000;
     assign cam1 = frame_buff_out;
                                   
-                                  
+                                 
     camera_wrapper my_wrap(
                            .clk_65mhz(clk_65mhz),
                            .j0(jd[0]), .j1(jd[1]), .j2(jd[2]), //WAS JB
@@ -201,7 +209,7 @@ module top_level(
                            
                            
    ////////////////////////////////////////////CAMERA_2////////////////////////////////////////////                        
-   
+
     logic [11:0] cam2;
     logic pclk_in2;
     logic [11:0] frame_buff_out2;
@@ -213,10 +221,9 @@ module top_level(
     
     logic she_valid2;
     assign she_valid2 = valid_pixel2 & ~sw[7];
-    
+   
     logic [16:0] pixel_addr_in2;
     logic [16:0] pixel_addr_out2;
-    
     
     
     blk_mem_gen_1 leileis_bram(.addra(pixel_addr_in2), //take a pic based on switch and  
@@ -225,8 +232,8 @@ module top_level(
                              .wea(she_valid2),
                              .addrb(pixel_addr_out2),
                              .clkb(clk_65mhz),
-                             .doutb(frame_buff_out2));
-    
+                             .doutb(frame_buff_out2));    
+
     always_ff @(posedge pclk_in2)begin
         if (frame_done_out2)begin
             pixel_addr_in2 <= 17'b0;  
@@ -234,16 +241,18 @@ module top_level(
             pixel_addr_in2 <= pixel_addr_in2 +1;  
         end
     end
-    
+
+   
     always_ff @(posedge clk_65mhz) begin
         old_output_pixels2 <= output_pixels2;
         processed_pixels2 = {output_pixels2[15:12],output_pixels2[10:7],output_pixels2[4:1]};            
     end
-  
+
+ 
     assign pixel_addr_out2 = hcount+vcount*32'd320;
     assign cam2 = frame_buff_out2;
                                   
-                                  
+                                
     camera_wrapper my_wrap2(
                            .clk_65mhz(clk_65mhz),
                            .j0(jb[0]), .j1(jb[1]), .j2(jb[2]),
@@ -254,56 +263,99 @@ module top_level(
                            .pclk_in(pclk_in2),
                            .frame_done_out(frame_done_out2));
    
-   
-   
-   
+
    /////////end CAMERA_2//////////
    
-   ////Camera 1 and 2 fusion on display
-   logic [11:0] cam;
-   
-//   if ((hcount<320) &&  (vcount<240)) cam <= cam1;
-//   else cam <= 12'h000;
-                                  
 
-    wire phsync,pvsync,pblank;
-    
-//    display_select ds(.vclock_in(clk_65mhz), .hsync_in(hsync),.vsync_in(vsync),.blank_in(blank),
-//                .phsync_out(phsync),.pvsync_out(pvsync),.pblank_out(pblank));
-                
+   ////Camera 1 and 2 fusion on display
+
+   logic [11:0] cam;
+
+ wire phsync,pvsync,pblank;    
+             
     logic clk_200mhz;
     logic clk_200mhz2;
-                
+    logic clk_200mhz3;
+    logic inbound1;
+    logic inbound2;
+    assign inbound1 = hcount > 11'd20 && hcount < 11'd340 &&  vcount < 10'd240;
+    assign inbound2 = hcount > 11'd340 && hcount < 11'd660 && vcount < 10'd240;            
+
     display_select ds(.vclock_in(clk_65mhz),
 //                        .selectors(sw[15:14]), 
                         .processing(sw[13:10]),
                         .pixel_in(cam1),
+                       
+                        .inBounds(inbound1),
                         .hcount_in(hcount),
                         .vcount_in(vcount),
                         .hsync_in(hsync),
                         .vsync_in(vsync),
                         .blank_in(blank),
+                        .world_x(world_x),
+                        .world_y(world_y),
+                        .world_z(world_z),
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
                         .pixel_out(pixel),
-                        .clk_200mhz(clk_200mhz));
+                        .clk_200mhz(clk_200mhz),
+                        .center_x(center_x),
+                        .center_y(center_y),
+                        .x_acc(x_acc),
+                        .y_acc(y_acc),
+                        .bit_count(bit_count));
+
                         
     display_select ds2(.vclock_in(clk_65mhz),
 //                        .selectors(sw[15:14]), 
                         .processing(sw[13:10]),
                         .pixel_in(cam2),
+                        .inBounds(inbound2),
                         .hcount_in(hcount),
                         .vcount_in(vcount),
                         .hsync_in(hsync),
                         .vsync_in(vsync),
                         .blank_in(blank),
+                        .world_x(world_x),
+                        .world_y(world_y),
+                        .world_z(world_z),
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
                         .pixel_out(pixel2),
-                        .clk_200mhz(clk_200mhz2));
-
+                        .clk_200mhz(clk_200mhz2),
+                        .center_x(center_x2),
+                        .center_y(center_y2),
+                        .x_acc(x_acc2),
+                        .y_acc(y_acc2),
+                        .bit_count(bit_count2));
+    
+    logic cam3; //not a real camera
+    display_select ds3(
+            .vclock_in(clk_65mhz),        // 65MHz clock
+            .hcount_in(hcount), // horizontal index of current pixel (0..1023)
+            .vcount_in(vcount), // vertical index of current pixel (0..767)
+            .hsync_in(hsync),         // XVGA horizontal sync signal (active low)
+            .vsync_in(vsync),         // XVGA vertical sync signal (active low)
+            .blank_in(blank),         // XVGA blanking (1 means output black pixel
+            .world_x(world_x),
+            .world_y(world_y),
+            .world_z(world_z),
+//            .selectors(sw[15:14]),  // selects between normal or processed image
+            .processing(sw[13:10]), // selects which kind of process is being done
+            .pixel_in(cam3),
+            .inBounds(vcount >= 10'd240),
+            .phsync_out(phsync),       // pong game's horizontal sync
+            .pvsync_out(pvsync),       // pong game's vertical sync
+            .pblank_out(pblank),       // pong game's blanking
+            .pixel_out(pixel3),  // pong game's pixel  // r=11:8, g=7:4, b=3:0
+            .clk_200mhz(clk_200mhz3),
+            .center_x(center_x3), ///testing centroid_x
+            .center_y(center_y3),
+            .x_acc(x_acc3),
+            .y_acc(y_acc3),
+            .bit_count(bit_count3));
 
     wire border = (hcount==0 | hcount==1023 | vcount==0 | vcount==767 |
                    hcount == 512 | vcount == 384);
@@ -331,6 +383,7 @@ module top_level(
          if ((hcount<320) &&  (vcount<240)) cam <= pixel; //left camera display
          else if ((hcount > 320) && (vcount<240) && (hcount < 641)) cam <= pixel2; //right camera display
 //         else if ((hcount<320) && (vcount>240) && (vcount<480)) cam <= pixel; //eroded left camera
+        else if (vcount>240 && (vcount<480)) cam <= pixel3; //the blobs
          else cam <= 12'h000;
          rgb <= cam;
       end
@@ -345,14 +398,15 @@ module top_level(
     assign vga_vs = ~vs;
 
     servo_wrapper myservo(.clk(clk_200mhz), .js(jdfour));
-
 endmodule
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // display-select: wrapper for object detection
 //
 ////////////////////////////////////////////////////////////////////////////////
+
 
 module display_select (
    input vclock_in,        // 65MHz clock
@@ -364,20 +418,77 @@ module display_select (
 //   input [1:0] selectors,  // selects between normal or processed image
    input [3:0] processing, // selects which kind of process is being done
    input [11:0] pixel_in,
-        
+   input inBounds,
+   input signed [31:0] world_x,
+   input signed [31:0] world_y,
+   input signed [31:0] world_z,
    output logic phsync_out,       // pong game's horizontal sync
    output logic pvsync_out,       // pong game's vertical sync
    output logic pblank_out,       // pong game's blanking
    output logic [11:0] pixel_out,  // pong game's pixel  // r=11:8, g=7:4, b=3:0
-   output logic clk_200mhz
+   output logic clk_200mhz,
+  
+   output [24:0] center_x, ///testing centroid_x
+   output [24:0] center_y,
+   output logic [24:0] x_acc,
+   output logic [24:0] y_acc,
+   output logic [24:0] bit_count
    );
 
-        
+   //centroid stuff
+   logic [11:0] centroid;
+   logic [11:0] pixel_outta;
+   
+
+   logic [24:0] centroid_x;
+
+   logic [24:0] centroid_y;
+
+    logic [24:0] valid_center_x;
+    logic [24:0] valid_center_y;
+    
+   assign center_x = centroid_x;
+   assign center_y = centroid_y;
+   //end centroid stuff
+  
+    //changing pixel to make it useful for ob det//////
+
+    logic [23:0] pixxel_in;
+    assign pixxel_in = {pixel_in[11:8], 4'b0, pixel_in[7:4], 4'b0, pixel_in[3:0], 4'b0};
+    
+    always_comb begin
+        if(centroid_x > 25'd319)begin
+            valid_center_x = centroid_x;
+        end
+        if(centroid_y > 25'd239)begin
+            valid_center_y = centroid_y;
+        end
+    end
+   
+   /////object_detection///
+//  logic [11:0] process_pixel;
+  object_detection ob_det(.clk(vclock_in),
+                        .hcount(hcount_in),
+                        .vcount(vcount_in),
+                        .inBounds(inBounds),
+                        .dilate(processing[1]), 
+                        .erode(processing[0]), 
+                        .thresholds(processing[3:2]),
+                        .pixel_in(pixxel_in),
+                        .centroid_x(centroid_x), 
+                        .centroid_y(centroid_y), 
+//                        .pixel_out(process_pixel),
+                        .pixel_out(pixel_outta),
+                        .x_acc(x_acc),
+                        .y_acc(y_acc),
+                        .bit_count(bit_count));
+
 
    assign phsync_out = hsync_in;
    assign pvsync_out = vsync_in;
    assign pblank_out = blank_in;
-   
+
+
    picture_blob  dulcecito(.pixel_clk_in(vclock_in), 
                             .x_in(11'd200), 
                             .hcount_in(hcount_in),
@@ -387,16 +498,129 @@ module display_select (
 //                            .original(selectors[1]), 
 //                            .processed(selectors[0]), 
                             .process_selects(processing), 
-                            .pixel_out(pixel_out),
+      //                      .pixel_out(pixel_outta),
                             .clk_260mhz(clk_200mhz));
 
+//    logic [24:0] centroid_x_in;
+//    logic [24:0] centroid_y_in;  
+
+    blob #(.WIDTH(16),.HEIGHT(16),.COLOR(12'hFF0))   // yellow!
+
+     the_centroid(.pixel_clk_in(vclock_in),
+                    .hcount_in(hcount_in),
+                    .vcount_in(vcount_in),
+                    .centroid_x(centroid_x),
+                    .centroid_y(centroid_y),  
+//                    .centroid_x(centroid_x_in),
+//                    .centroid_y(centroid_y_in), 
+//                    .original(selectors[1]), 
+//                    .processed(selectors[0]), 
+      //              .process_selects(processing), 
+                    .pixel_out(centroid)); 
+
+    // SIDE VIEW
+    // z bounds from camera: [-2083, 0]
+    // -y bounds from camera: 185 -> 0
+    logic signed [31:0] side_ball_x;
+    logic signed [31:0] side_ball_y;
+    
+    logic signed [31:0] top_ball_x;
+    logic signed [31:0] top_ball_y;
+    
+//    assign side_ball_x = (-world_z[31:16]*320)  >>> 11; // change denom
+//    assign side_ball_y = (240*300 - world_y[31:16]*240)  >>> 9;
+
+    
+    // TOP VIEW
+    // x bounds from camera: 24, 292, 0
+    // z bounds from camera: -2083, -2075, 0 --> [2083,0
+    
+//      assign top_ball_x = (world_x[31:16] * 320 +  320*300) >>> 9 ;
+//      assign top_ball_y = (-world_z[31:16] * 240) >>> 11;  
+    
+    
+
+    ///interesting math to map distance module values to pixels//////
+    logic [11:0] side_view;
+    blob #(.WIDTH(320), .HEIGHT(240), .COLOR(12'h00F))
+        side_v(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd0), .centroid_y(25'd240), .pixel_out(side_view));
+    
+    logic [11:0] top_view;
+    blob #(.WIDTH(320), .HEIGHT(240), .COLOR(12'h0F0))
+        top_v(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd320), .centroid_y(25'd240), .pixel_out(top_view));
+        
+    logic [11:0] side_or;
+    blob #(.WIDTH(12), .HEIGHT(12), .COLOR(12'hFF0))
+        side_origin(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd300), .centroid_y(25'd360), .pixel_out(side_or));
+        
+    logic [11:0] side_cam;
+    blob #(.WIDTH(8), .HEIGHT(8), .COLOR(12'hF00))
+        side_camera(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd0), .centroid_y(25'd387), .pixel_out(side_cam));
+    
+      
+    logic [11:0] side_obj;
+    blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h0F0))
+        side_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(side_ball_x[24:0]), .centroid_y(side_ball_y[24:0] + 25'd240), .pixel_out(side_obj));
+        
+    logic [11:0] top_or;
+    blob #(.WIDTH(12), .HEIGHT(12), .COLOR(12'hF00))
+        top_origin(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd480), .centroid_y(25'd250), .pixel_out(top_or));
+        
+    logic [11:0] top_cam1;
+    blob #(.WIDTH(8), .HEIGHT(8), .COLOR(12'hF0F))
+        top_camL(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd510), .centroid_y(25'd458), .pixel_out(top_cam1));
+        
+    logic [11:0] top_cam2;
+    blob #(.WIDTH(8), .HEIGHT(8), .COLOR(12'hF0F))
+        top_camR(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(25'd537), .centroid_y(25'd459), .pixel_out(top_cam2));
+        
+    logic [11:0] top_obj;
+    blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h00F))
+        top_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
+        .centroid_x(top_ball_x[24:0]), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
+     
+//   always_ff @(posedge vclock_in) begin
+//        if (selectors == 2'b10) begin
+//           if ((hcount_in >= centroid_x_in && hcount_in <= centroid_x_in + 25'd16) 
+//            && (vcount_in >= centroid_y_in  && vcount_in <= centroid_y_in + 25'd16)) begin
+//                pixel_outta <= 12'd0;
+//            end else pixel_outta <= process_pixel;
+//            centroid_x_in <= centroid_x;
+//            centroid_y_in <= centroid_y;
+//        end else if (selectors == 2'b01) begin
+//            if ((hcount_in >= centroid_x_in && hcount_in <= centroid_x_in + 25'd16) 
+//            && (vcount_in >= centroid_y_in  && vcount_in <= centroid_y_in + 25'd16)) begin
+//                pixel_outta <= 12'd0;
+//            end else pixel_outta <= pixel_in;
+//            centroid_x_in <= centroid_x - 25'd20;
+//            centroid_y_in <= centroid_y - 25'd20;
+//       end 
+//    end
+     
+   
+    assign pixel_out = centroid + pixel_outta + side_cam + 
+    side_or + side_obj + top_or + top_cam1 + top_cam2 + top_obj + top_view + side_view;
+
+
+
 endmodule
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
 // picture_blob: displays the image manipu40.88lated 
 //
 ///////////////////////////////////////////////////////////////////////////////
+
 
 module picture_blob
    #(parameter WIDTH = 320,     // default picture width
@@ -408,65 +632,48 @@ module picture_blob
 //    input original, //selection of original or processed image
 //    input processed,
     input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
-    output logic [11:0] pixel_out,
+    //output logic [11:0] pixel_out,
     output logic clk_260mhz);
+    
+  clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
 
-   logic [15:0] image_addr;   // num of bits for 256*240 ROM
-   logic [7:0] image_bits, red_mapped, green_mapped, blue_mapped;
-   
-
-
-   // calculate rom address and read the location
-//   assign image_addr = (hcount_in-x_in) + (vcount_in-y_in) * WIDTH;
-//   m_and_m_rom image_rom(.clka(pixel_clk_in), .addra(image_addr), .douta(image_bits));
-
-   // use color map to create 4 bits R, 4 bits G, 4 bits B
-   // since the image is greyscale, just replicate the red pixels
-   // and not bother with the other two color maps.
-//   red_rom rcm(.clka(pixel_clk_in), .addra(image_bits), .douta(red_mapped));
-//   green_rom gcm (.clka(pixel_clk_in), .addra(image_bits), .douta(green_mapped));
-//   blue_rom bcm (.clka(pixel_clk_in), .addra(image_bits), .douta(blue_mapped));
-   // note the one clock cycle delay in pixel!
-   
-   logic [9:0] yy;
-   logic [9:0] xx;
-//   logic [23:0] pixel_in; //pixel that goes in to be binarized
-//   logic [11:0] pixxel; //output from image processing
-   
-//   logic clk_260mhz;
-   clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_260mhz));
-   
-   logic [23:0] pixxel_in;
-   
-   assign pixxel_in = {pixel_in[11:8], 4'b0, pixel_in[7:4], 4'b0, pixel_in[3:0], 4'b0};
-   
-   object_detection ob_det(.clk(clk_260mhz), 
-                            .dilate(process_selects[1]), 
-                            .erode(process_selects[0]), 
-                            .thresholds(process_selects[3:2]),
-                            .pixel_in(pixxel_in),
-                            .centroid_x(xx), 
-                            .centroid_y(yy), 
-                            .pixel_out(pixel_out));
-   
-
-
-   
-//   always_ff @ (posedge pixel_clk_in) begin
-//        if ((hcount_in >= (x_in) && hcount_in < (x_in+WIDTH)) &&
-//           (vcount_in >= y_in && vcount_in < (y_in+HEIGHT))) begin
-//           if (processed) begin
-//                pixel_in <= {red_mapped, green_mapped, blue_mapped};
-//                pixel_out <= pixxel;
-//           end else if (original) begin
-//                pixel_out <= {red_mapped[7:4], green_mapped[7:4], blue_mapped[7:4]};
-//           end 
-//        end else pixel_out <= 0;
-           
-   
-//   end
 endmodule
 
+
+
+////////BLOB////////
+
+module blob
+   #(parameter WIDTH = 64,            // default width: 64 pixels
+               HEIGHT = 64,           // default height: 64 pixels
+               COLOR = 12'hFFF)  // default color: white
+   (input pixel_clk_in,
+    input [10:0] hcount_in,
+    input [9:0] vcount_in,
+    input [24:0] centroid_x,
+    input [24:0] centroid_y,
+//    input original, //selection of original or processed image
+//    input processed,
+    //input [3:0] process_selects, // allows us to see erosion and dilation, and to choose hue thresholds
+    output logic [11:0] pixel_out);   
+
+    logic clk_200mhz;
+    clk_wiz_0 clkmulti(.clk_in1(pixel_clk_in), .clk_out1(clk_200mhz));   
+
+   always_ff @(posedge pixel_clk_in) begin
+        if ((hcount_in >= centroid_x && hcount_in < (centroid_x+WIDTH)) &&
+           (vcount_in >= centroid_y && vcount_in < (centroid_y+HEIGHT))) begin
+            pixel_out <= COLOR;
+        end else begin
+            pixel_out <= 0;
+        end
+   end
+
+endmodule
+
+
+
+///////ENDBLOB///////
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -489,94 +696,8 @@ module debounce (input reset_in, clock_in, noisy_in,
      else if (count == 650000) clean_out <= new_input;
      else count <= count+1;
 
-
 endmodule
 
-//////////////////////////////////////////////////////////////////////////////////
-// Engineer:   g.p.hom
-// 
-// Create Date:    18:18:59 04/21/2013 
-// Module Name:    display_8hex 
-// Description:  Display 8 hex numbers on 7 segment display
-//
-//////////////////////////////////////////////////////////////////////////////////
-
-module display_8hex(
-    input clk_in,                 // system clock
-    input [31:0] data_in,         // 8 hex numbers, msb first
-    output reg [6:0] seg_out,     // seven segment display output
-    output reg [7:0] strobe_out   // digit strobe
-    );
-
-    localparam bits = 13;
-     
-    reg [bits:0] counter = 0;  // clear on power up
-     
-    wire [6:0] segments[15:0]; // 16 7 bit memorys
-    assign segments[0]  = 7'b100_0000;  // inverted logic
-    assign segments[1]  = 7'b111_1001;  // gfedcba
-    assign segments[2]  = 7'b010_0100;
-    assign segments[3]  = 7'b011_0000;
-    assign segments[4]  = 7'b001_1001;
-    assign segments[5]  = 7'b001_0010;
-    assign segments[6]  = 7'b000_0010;
-    assign segments[7]  = 7'b111_1000;
-    assign segments[8]  = 7'b000_0000;
-    assign segments[9]  = 7'b001_1000;
-    assign segments[10] = 7'b000_1000;
-    assign segments[11] = 7'b000_0011;
-    assign segments[12] = 7'b010_0111;
-    assign segments[13] = 7'b010_0001;
-    assign segments[14] = 7'b000_0110;
-    assign segments[15] = 7'b000_1110;
-     
-    always_ff @(posedge clk_in) begin
-      // Here I am using a counter and select 3 bits which provides
-      // a reasonable refresh rate starting the left most digit
-      // and moving left.
-      counter <= counter + 1;
-      case (counter[bits:bits-2])
-          3'b000: begin  // use the MSB 4 bits
-                  seg_out <= segments[data_in[31:28]];
-                  strobe_out <= 8'b0111_1111 ;
-                 end
-
-          3'b001: begin
-                  seg_out <= segments[data_in[27:24]];
-                  strobe_out <= 8'b1011_1111 ;
-                 end
-
-          3'b010: begin
-                   seg_out <= segments[data_in[23:20]];
-                   strobe_out <= 8'b1101_1111 ;
-                  end
-          3'b011: begin
-                  seg_out <= segments[data_in[19:16]];
-                  strobe_out <= 8'b1110_1111;        
-                 end
-          3'b100: begin
-                  seg_out <= segments[data_in[15:12]];
-                  strobe_out <= 8'b1111_0111;
-                 end
-
-          3'b101: begin
-                  seg_out <= segments[data_in[11:8]];
-                  strobe_out <= 8'b1111_1011;
-                 end
-
-          3'b110: begin
-                   seg_out <= segments[data_in[7:4]];
-                   strobe_out <= 8'b1111_1101;
-                  end
-          3'b111: begin
-                  seg_out <= segments[data_in[3:0]];
-                  strobe_out <= 8'b1111_1110;
-                 end
-
-       endcase
-      end
-
-endmodule
 
 //////////////////////////////////////////////////////////////////////////////////
 // Update: 8/8/2019 GH 
@@ -605,19 +726,18 @@ module xvga(input vclock_in,
             output reg vsync_out, hsync_out,
             output reg blank_out);
 
+
    parameter DISPLAY_WIDTH  = 1024;      // display width
    parameter DISPLAY_HEIGHT = 768;       // number of lines
-
    parameter  H_FP = 24;                 // horizontal front porch
    parameter  H_SYNC_PULSE = 136;        // horizontal sync
    parameter  H_BP = 160;                // horizontal back porch
-
    parameter  V_FP = 3;                  // vertical front porch
    parameter  V_SYNC_PULSE = 6;          // vertical sync 
    parameter  V_BP = 29;                 // vertical back porch
-
    // horizontal: 1344 pixels total
    // display 1024 pixels per line
+
    reg hblank,vblank;
    wire hsyncon,hsyncoff,hreset,hblankon;
    assign hblankon = (hcount_out == (DISPLAY_WIDTH -1));    
@@ -641,12 +761,9 @@ module xvga(input vclock_in,
       hcount_out <= hreset ? 0 : hcount_out + 1;
       hblank <= next_hblank;
       hsync_out <= hsyncon ? 0 : hsyncoff ? 1 : hsync_out;  // active low
-
       vcount_out <= hreset ? (vreset ? 0 : vcount_out + 1) : vcount_out;
       vblank <= next_vblank;
       vsync_out <= vsyncon ? 0 : vsyncoff ? 1 : vsync_out;  // active low
-
       blank_out <= next_vblank | (next_hblank & ~hreset);
    end
-   
 endmodule

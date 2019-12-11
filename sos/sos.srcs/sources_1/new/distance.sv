@@ -1,11 +1,6 @@
 module distance(
     input clk_in,
     input rst_in,
-//    input start,
-//    input signed [31:0] x1, // make these 25 bits
-//    input signed [31:0] y1,
-//    input signed [31:0] x2,
-//    input signed [31:0] y2,
     input [24:0] x1, // make these 25 bits
     input [24:0] y1,
     input [24:0] x2,
@@ -17,6 +12,7 @@ module distance(
     output logic signed [31:0] world_z
     );
     
+    ///// LOGIC to convert 25 bit unsigned int to 32 bit fixed point
     logic signed [31:0] converted_x1;
     logic signed [31:0] converted_y1;
     logic signed [31:0] converted_x2;
@@ -32,38 +28,38 @@ module distance(
     
     //inverted camera 1 matrix
     parameter signed P1_inv11 = {16'b0,                       16'b0000_0001_1111_1000}; // 0.0077
-    parameter signed P1_inv12 = {16'b0,                       16'b0000_0000_0000_1101}; //'d64;
+    parameter signed P1_inv12 = {16'b0,                       16'b0000_0000_0000_0000}; //'d64;
     parameter signed P1_inv13 = {16'b0,                       16'b0};
-    parameter signed P1_inv21 = {1'b1, 15'b111111111111111,   16'b1111_1111_1111_0010};//-'d59;
-    parameter signed P1_inv22 = {1'b0, 15'b0,                 16'b0000_0001_1111_1000}; //'d2007;
-    parameter signed P1_inv23 = {1'b0, 15'b0,   16'b0};
-    parameter signed P1_inv31 = {1'b1, 15'b111111111111110,   16'b0000_1111_0101_1100};
-    parameter signed P1_inv32 = {1'b1, 15'b111111111111110,   16'b1110_1100_0011_0110};
-    parameter signed P1_inv33 = {1'b0, 15'b0,                 16'b0000_0000_0110_1000};
+    parameter signed P1_inv21 = {1'b0, 15'b0,   16'b00000000000001101};//-'d59;
+    parameter signed P1_inv22 = {1'b0, 15'b0,                 16'b0000000111101011}; //'d2007;
+    parameter signed P1_inv23 = {1'b0, 15'b0,   16'b0};           
+    parameter signed P1_inv31 = {1'b1, 15'b111111111111110,   16'b0100100011110101}; 
+    parameter signed P1_inv32 = {1'b1, 15'b111111111111110,   16'b1110111101000001};
+    parameter signed P1_inv33 = {1'b0, 15'b0,                 16'b0000000010000011};
     
     //real world coords of camera 1
-    parameter signed C1_1 = {1'b0, 15'b100100100, 16'b0};//'d292;
-    parameter signed C1_2 = {1'b0, 15'b1001001, 16'b0};//'d73;
-    parameter signed C1_3 =  {1'b1, 15'b111011111100100, 16'b1111_1111_1111_1111};//-'d2075;
+    parameter signed C1_1 = {1'b0, 15'b101001111, 16'b0};//'d292;
+    parameter signed C1_2 = {1'b0, 15'b1100001, 16'b0};//'d73;
+    parameter signed C1_3 =  {1'b1, 15'b111100101000101, 16'b1111_1111_1111_1111};//-'d2075;
     
     
     /* RIGHT CAMERA */
     
     //inverted camera 2 matrix
-    parameter signed P2_inv11 = {1'b0, 15'b0, 16'b0000_0001_1110_1011};//32'd1970;
-    parameter signed P2_inv12 = {16'b0,       16'b0000_0000_0000_1101};
+    parameter signed P2_inv11 = {1'b0, 15'b0, 16'b0000000111101011};//32'd1970;
+    parameter signed P2_inv12 = {1'b1,  15'b111111111111111,     16'b1111_1111_1111_0010};
     parameter signed P2_inv13 = 32'b0;
-    parameter signed P2_inv21 = {1'b1, 15'b111111111111111, 16'b1111_1111_1110_1100};
-    parameter signed P2_inv22 =  {1'b0, 15'b0,                 16'b0000_0001_1111_1000}; 
-    parameter signed P2_inv23 =  32'd0;
-    parameter signed P2_inv31 = {1'b1, 15'b111111111111111, 16'b1010_0111_0111_1001};
-    parameter signed P2_inv32 = {1'b1, 15'b111111111111111, 16'b0001_1110_1111_1001};
-    parameter signed P2_inv33 =  {1'b0, 15'b0, 16'b0000_0000_1000_0011};
+    parameter signed P2_inv21 = {1'b0, 15'b0, 16'b00000000000001101};
+    parameter signed P2_inv22 =  {1'b0, 15'b0,                 16'b0000000111101011}; 
+    parameter signed P2_inv23 =  32'd0;                         
+    parameter signed P2_inv31 = {1'b1, 15'b111111111111111, 16'b1010111001010101};
+    parameter signed P2_inv32 = {1'b1, 15'b111111111111111, 16'b0000101001000011};
+    parameter signed P2_inv33 =  {1'b0, 15'b0, 16'b0000000010010110};
 
     //real world coords for camera 2
-    parameter signed C2_1 = {1'b0, 15'b11000, 16'b0};//32'd24;
-    parameter signed C2_2 = {1'b0, 15'b10111001, 16'b0};
-    parameter signed C2_3 = {1'b1, 15'b111011111011100, 16'b1111_1111_1111_1111};//-32'd2083;
+    parameter signed C2_1 = {1'b0, 15'b10110010, 16'b0};//32'd24;
+    parameter signed C2_2 = {1'b0, 15'b10010001, 16'b0};
+    parameter signed C2_3 = {1'b1, 15'b111100100110111, 16'b1111_1111_1111_1111};//-32'd2083;
 
 
     
@@ -322,13 +318,13 @@ module distance(
         s2_scaling_1 = s2_scaling_1_temp[47:16];
         s2_scaling_2 = s2_scaling_2_temp[47:16];   
         
-        t_multiplication_1 = t_multiplication_1_temp[47:16];  
-        t_multiplication_2 = t_multiplication_2_temp[47:16]; 
-        t_multiplication_3 = t_multiplication_3_temp[47:16];    
+        t_multiplication_1 = t_multiplication_1_temp[47 + 3:16 + 3];  
+        t_multiplication_2 = t_multiplication_2_temp[47 + 3:16 + 3]; 
+        t_multiplication_3 = t_multiplication_3_temp[47 + 3:16 + 3];    
         
-        t_divisor_1 = t_divisor_1_temp[47:16];
-        t_divisor_2 = t_divisor_2_temp[47:16];
-        t_divisor_3 = t_divisor_3_temp[47:16];
+        t_divisor_1 = t_divisor_1_temp[47 + 3:16 + 3];
+        t_divisor_2 = t_divisor_2_temp[47 + 3:16 + 3];
+        t_divisor_3 = t_divisor_3_temp[47 + 3:16 + 3];
         
         world_x_multiplication_1 = world_x_multiplication_1_temp[47:16];
         world_x_multiplication_2 = world_x_multiplication_2_temp[47:16];
@@ -354,7 +350,7 @@ module distance(
         s1_world1_y1_temp <= converted_x1*P1_inv12;
         s1_world1_y2_temp <= converted_y1*P1_inv22;
         s1_world1_y3 <= P1_inv32;
-        
+         
         s1_scaling_1_temp <= converted_x1*P1_inv13;
         s1_scaling_2_temp <= converted_y1*P1_inv23;
         s1_scaling_3 <= P1_inv33;
@@ -484,9 +480,9 @@ module distance(
 //        world_z <= (C1_3 + t_cpa*u3 + C2_3 + t_cpa*v3)16 >> 1;
         
         // STAGE 11: divide world_x, world_y, and world_z by 2
-        world_x <= world_x_numerator >> 1;
-        world_y <= world_y_numerator >> 1;
-        world_z <= -(~({1'b1, world_z_numerator} >> 1)); // use divider
+        world_x <= world_x_numerator >>> 1;
+        world_y <= world_y_numerator >>> 1;
+        world_z <= world_z_numerator >>> 1;// use divider
         
         
         // STAGE 12
@@ -640,3 +636,5 @@ always_ff@(posedge clk_in)begin
 end
 
 endmodule // get_divisor
+
+
