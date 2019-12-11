@@ -565,8 +565,9 @@ module display_select (
     logic [11:0] side_obj;
     blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h0F0))
         side_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
-        .centroid_x(side_ball_x[24:0]), .centroid_y(side_ball_y[24:0] + 25'd240), .pixel_out(side_obj));
-        
+//        .centroid_x(side_ball_x[24:0]), .centroid_y(side_ball_y[24:0] + 25'd240), .pixel_out(side_obj));
+        .centroid_x(side_ball_x[24:0]), .centroid_y(25'd120 + 25'd240), .pixel_out(side_obj));
+                
     logic [11:0] top_or;
     blob #(.WIDTH(12), .HEIGHT(12), .COLOR(12'hF00))
         top_origin(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
@@ -585,7 +586,8 @@ module display_select (
     logic [11:0] top_obj;
     blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h00F))
         top_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
-        .centroid_x(top_ball_x[24:0]+ 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
+//        .centroid_x(top_ball_x[24:0]+ 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
+        .centroid_x(25'd160 + 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
      
 //   always_ff @(posedge vclock_in) begin
 //        if (selectors == 2'b10) begin
