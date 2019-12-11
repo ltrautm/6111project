@@ -133,6 +133,18 @@ module top_level(
         .world_z(world_z)
         );
     logic [31:0] selected;
+    
+//    always_ff@(posedge clk_65mhz)begin
+//        if(sw[2])begin
+//            selected <= {world_x[31:0]};
+//        end else if(sw[1])begin
+//            selected <= {world_y[31:0]};
+//        end else if(sw[0])begin
+//            selected <= {world_z[31:0]};
+//        end else begin
+//            selected <= {distance[31:16], 16'b0};
+//        end
+//    end
     assign selected = {distance[31:16], 16'b0}; // change this later
 //    assign selected = {nice_centroid_x1[7:0], nice_centroid_y1[7:0], nice_centroid_x2[7:0], nice_centroid_y2[7:0]};
 //    logic [31:0] sel_set;
@@ -295,6 +307,7 @@ module top_level(
                         .world_x(world_x),
                         .world_y(world_y),
                         .world_z(world_z),
+                        .distance(distance[31:16]),
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
@@ -320,6 +333,7 @@ module top_level(
                         .world_x(world_x),
                         .world_y(world_y),
                         .world_z(world_z),
+                        .distance(distance[31:16]),       
                         .phsync_out(phsync),
                         .pvsync_out(pvsync),
                         .pblank_out(pblank),
@@ -342,6 +356,7 @@ module top_level(
             .world_x(world_x),
             .world_y(world_y),
             .world_z(world_z),
+            .distance(distance[31:16]),
 //            .selectors(sw[15:14]),  // selects between normal or processed image
             .processing(sw[13:10]), // selects which kind of process is being done
             .pixel_in(cam3),
@@ -422,6 +437,7 @@ module display_select (
    input signed [31:0] world_x,
    input signed [31:0] world_y,
    input signed [31:0] world_z,
+   input        [15:0] distance,
    output logic phsync_out,       // pong game's horizontal sync
    output logic pvsync_out,       // pong game's vertical sync
    output logic pblank_out,       // pong game's blanking
@@ -521,23 +537,27 @@ module display_select (
     // SIDE VIEW
     // z bounds from camera: [-2083, 0]
     // -y bounds from camera: 185 -> 0
-    logic signed [31:0] side_ball_x;
-    logic signed [31:0] side_ball_y;
+    logic [15:0] side_ball_x;
+//    logic signed [31:0] side_ball_y;
     
-    logic signed [31:0] top_ball_x;
-    logic signed [31:0] top_ball_y;
+//    logic signed [31:0] top_ball_x;
+    logic [15:0] top_ball_y;
     
-    assign side_ball_x = (-world_z[31:16]*320)  >>> 11; // change denom
-    assign side_ball_y = (240*300 - world_y[31:16]*240)  >>> 9;
+//    assign side_ball_x = (-world_z[30:16]*320)  >>> 11; // change denom
+//    assign side_ball_y = (240*300 - world_y[31:16]*240)  >>> 9;
 
     
     // TOP VIEW
     // x bounds from camera: 24, 292, 0
     // z bounds from camera: -2083, -2075, 0 --> [2083,0
     
-      assign top_ball_x = (world_x[31:16] * 320 +  320*300) >>> 9 ;
-      assign top_ball_y = (-world_z[31:16] * 240) >>> 11;  
+//      assign top_ball_x = (world_x[31:16] * 320 +  320*300) >>> 9 ;
+//      assign top_ball_y = (-world_z[31:16] * 240) >>> 11;  
     
+    always_ff@(posedge vclock_in)begin
+        top_ball_y <= ((distance - 16'h600) ) * 240 >> 6;
+        side_ball_x <= ((distance - 16'h600) << 2);
+    end
     
 
     ///interesting math to map distance module values to pixels//////
@@ -566,7 +586,7 @@ module display_select (
     blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h0F0))
         side_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
 //        .centroid_x(side_ball_x[24:0]), .centroid_y(side_ball_y[24:0] + 25'd240), .pixel_out(side_obj));
-        .centroid_x(side_ball_x[24:0]), .centroid_y(25'd120 + 25'd240), .pixel_out(side_obj));
+        .centroid_x({9'b0, side_ball_x}), .centroid_y(25'd120 + 25'd240), .pixel_out(side_obj));
                 
     logic [11:0] top_or;
     blob #(.WIDTH(12), .HEIGHT(12), .COLOR(12'hF00))
@@ -587,7 +607,7 @@ module display_select (
     blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h00F))
         top_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
 //        .centroid_x(top_ball_x[24:0]+ 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
-        .centroid_x(25'd160 + 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
+        .centroid_x(25'd160 + 25'd320), .centroid_y({9'b0, top_ball_y} + 25'd240), .pixel_out(top_obj));
      
 //   always_ff @(posedge vclock_in) begin
 //        if (selectors == 2'b10) begin
