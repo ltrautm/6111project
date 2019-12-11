@@ -133,8 +133,8 @@ module top_level(
         .world_z(world_z)
         );
     logic [31:0] selected;
-//    assign selected = {distance[31:16], 16'b0}; // change this later
-    assign selected = {nice_centroid_x1[7:0], nice_centroid_y1[7:0], nice_centroid_x2[7:0], nice_centroid_y2[7:0]};
+    assign selected = {distance[31:16], 16'b0}; // change this later
+//    assign selected = {nice_centroid_x1[7:0], nice_centroid_y1[7:0], nice_centroid_x2[7:0], nice_centroid_y2[7:0]};
 //    logic [31:0] sel_set;
 //    logic [26:0] counter_boi = 27'b0;
 //    always_ff @(posedge clk_65mhz) begin
@@ -527,16 +527,16 @@ module display_select (
     logic signed [31:0] top_ball_x;
     logic signed [31:0] top_ball_y;
     
-//    assign side_ball_x = (-world_z[31:16]*320)  >>> 11; // change denom
-//    assign side_ball_y = (240*300 - world_y[31:16]*240)  >>> 9;
+    assign side_ball_x = (-world_z[31:16]*320)  >>> 11; // change denom
+    assign side_ball_y = (240*300 - world_y[31:16]*240)  >>> 9;
 
     
     // TOP VIEW
     // x bounds from camera: 24, 292, 0
     // z bounds from camera: -2083, -2075, 0 --> [2083,0
     
-//      assign top_ball_x = (world_x[31:16] * 320 +  320*300) >>> 9 ;
-//      assign top_ball_y = (-world_z[31:16] * 240) >>> 11;  
+      assign top_ball_x = (world_x[31:16] * 320 +  320*300) >>> 9 ;
+      assign top_ball_y = (-world_z[31:16] * 240) >>> 11;  
     
     
 
@@ -585,7 +585,7 @@ module display_select (
     logic [11:0] top_obj;
     blob #(.WIDTH(16), .HEIGHT(16), .COLOR(12'h00F))
         top_object(.pixel_clk_in(vclock_in), .hcount_in(hcount_in), .vcount_in(vcount_in),
-        .centroid_x(top_ball_x[24:0]), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
+        .centroid_x(top_ball_x[24:0]+ 25'd320), .centroid_y(top_ball_y[24:0] + 25'd240), .pixel_out(top_obj));
      
 //   always_ff @(posedge vclock_in) begin
 //        if (selectors == 2'b10) begin

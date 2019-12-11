@@ -318,13 +318,13 @@ module distance(
         s2_scaling_1 = s2_scaling_1_temp[47:16];
         s2_scaling_2 = s2_scaling_2_temp[47:16];   
         
-        t_multiplication_1 = t_multiplication_1_temp[47 + 3:16 + 3];  
-        t_multiplication_2 = t_multiplication_2_temp[47 + 3:16 + 3]; 
-        t_multiplication_3 = t_multiplication_3_temp[47 + 3:16 + 3];    
+        t_multiplication_1 = t_multiplication_1_temp[47 + 5:16 + 5];  
+        t_multiplication_2 = t_multiplication_2_temp[47 + 5:16 + 5]; 
+        t_multiplication_3 = t_multiplication_3_temp[47 + 5:16 + 5];    
         
-        t_divisor_1 = t_divisor_1_temp[47 + 3:16 + 3];
-        t_divisor_2 = t_divisor_2_temp[47 + 3:16 + 3];
-        t_divisor_3 = t_divisor_3_temp[47 + 3:16 + 3];
+        t_divisor_1 = t_divisor_1_temp[47 + 5:16 + 5];
+        t_divisor_2 = t_divisor_2_temp[47 + 5:16 + 5];
+        t_divisor_3 = t_divisor_3_temp[47 + 5:16 + 5];
         
         world_x_multiplication_1 = world_x_multiplication_1_temp[47:16];
         world_x_multiplication_2 = world_x_multiplication_2_temp[47:16];
